@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"unity-fileid-graph/internal/cli"
+	"github.com/Kubonsang/unity-fileid-graph/internal/cli"
 )
 
 func main() {

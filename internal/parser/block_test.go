@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"unity-fileid-graph/internal/core"
+	"github.com/Kubonsang/unity-fileid-graph/internal/core"
 )
 
 func TestParseHeaderParsesNormalHeader(t *testing.T) {
@@ -222,6 +222,30 @@ func TestParseBlocks(t *testing.T) {
 		}
 		if result.TrailerRaw != "...\n" {
 			t.Fatalf("expected trailer %q, got %q", "...\n", result.TrailerRaw)
+		}
+	})
+
+	t.Run("moves document end marker into trailer without trailing newline", func(t *testing.T) {
+		input := []byte(
+			"--- !u!1 &1000\n" +
+				"GameObject:\n" +
+				"  m_Name: Player\n" +
+				"...",
+		)
+
+		result, err := Parse(input)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(result.Blocks) != 1 {
+			t.Fatalf("expected 1 block, got %d", len(result.Blocks))
+		}
+		if strings.Contains(result.Blocks[0].BodyRaw, "...") {
+			t.Fatalf("expected document marker removed from body, got %q", result.Blocks[0].BodyRaw)
+		}
+		if result.TrailerRaw != "..." {
+			t.Fatalf("expected trailer %q, got %q", "...", result.TrailerRaw)
 		}
 	})
 
