@@ -108,6 +108,10 @@ func extractTransform(fileID int64, body string) (*core.ComponentNode, *core.Tra
 				Message: "unsupported Transform.m_Father shape",
 			})
 		case "m_Children":
+			if strings.TrimSpace(line.RawValue) == "[]" {
+				transform.Children = []int64{}
+				continue
+			}
 			if children, ok := parseChildFileIDList(lines, i); ok {
 				transform.Children = children
 				continue
