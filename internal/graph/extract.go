@@ -110,7 +110,13 @@ func extractTransform(fileID int64, body string) (*core.ComponentNode, *core.Tra
 		case "m_Children":
 			if children, ok := parseChildFileIDList(lines, i); ok {
 				transform.Children = children
+				continue
 			}
+			issues = append(issues, core.Issue{
+				Code:    core.IssueUnknownFieldShape,
+				FileID:  fileID,
+				Message: "unsupported Transform.m_Children shape",
+			})
 		}
 	}
 

@@ -64,6 +64,24 @@ func TestExtractMonoBehaviourUnknownScriptShapeReturnsIssue(t *testing.T) {
 	}
 }
 
+func TestExtractTransformUnknownChildrenShapeReturnsIssue(t *testing.T) {
+	body := "" +
+		"Transform:\n" +
+		"  m_GameObject: {fileID: 1000}\n" +
+		"  m_Children:\n" +
+		"    - child:\n" +
+		"        nested: unexpected\n"
+
+	_, transform, issues := extractTransform(4000, body)
+
+	if len(transform.Children) != 0 {
+		t.Fatalf("expected no extracted children, got %v", transform.Children)
+	}
+	if len(issues) != 1 || issues[0].Code != core.IssueUnknownFieldShape {
+		t.Fatalf("expected UNKNOWN_FIELD_SHAPE issue, got %v", issues)
+	}
+}
+
 func TestExtractComponentRefUnknownGameObjectShapeReturnsIssue(t *testing.T) {
 	body := string(loadGraphFixture(t, "unknown_gameobject_ref_shape.prefab"))
 
