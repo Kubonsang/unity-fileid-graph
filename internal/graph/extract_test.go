@@ -77,6 +77,56 @@ func TestExtractMonoBehaviourUnknownScriptShapeReturnsIssue(t *testing.T) {
 	}
 }
 
+func TestExtractMonoBehaviourParsesScriptMetadata(t *testing.T) {
+	body := "" +
+		"MonoBehaviour:\n" +
+		"  m_GameObject: {fileID: 1000}\n" +
+		"  m_Script: {fileID: 11500000, guid: 0123456789abcdef0123456789abcdef, type: 3}\n"
+
+	component, issues := extractMonoBehaviour(11400000, body)
+
+	if len(issues) != 0 {
+		t.Fatalf("expected no issues, got %v", issues)
+	}
+	if component.Script == nil {
+		t.Fatalf("expected script metadata to be extracted")
+	}
+	if component.Script.FileID != 11500000 {
+		t.Fatalf("expected script file id 11500000, got %d", component.Script.FileID)
+	}
+	if component.Script.GUID != "0123456789abcdef0123456789abcdef" {
+		t.Fatalf("unexpected script guid: %q", component.Script.GUID)
+	}
+	if component.Script.Type != 3 {
+		t.Fatalf("expected script type 3, got %d", component.Script.Type)
+	}
+}
+
+func TestExtractMonoBehaviourPopulatesScriptRefFromInlineMetadata(t *testing.T) {
+	body := "" +
+		"MonoBehaviour:\n" +
+		"  m_GameObject: {fileID: 1000}\n" +
+		"  m_Script: {fileID: 11500000, guid: 0123456789abcdef0123456789abcdef, type: 3}\n"
+
+	component, issues := extractMonoBehaviour(11400000, body)
+
+	if len(issues) != 0 {
+		t.Fatalf("expected no issues, got %v", issues)
+	}
+	if component.Script == nil {
+		t.Fatalf("expected script metadata")
+	}
+	if component.Script.FileID != 11500000 {
+		t.Fatalf("expected script fileID 11500000, got %d", component.Script.FileID)
+	}
+	if component.Script.GUID != "0123456789abcdef0123456789abcdef" {
+		t.Fatalf("expected script GUID populated, got %q", component.Script.GUID)
+	}
+	if component.Script.Type != 3 {
+		t.Fatalf("expected script type 3, got %d", component.Script.Type)
+	}
+}
+
 func TestExtractTransformUnknownChildrenShapeReturnsIssue(t *testing.T) {
 	body := "" +
 		"Transform:\n" +
@@ -95,6 +145,24 @@ func TestExtractTransformUnknownChildrenShapeReturnsIssue(t *testing.T) {
 	}
 }
 
+func TestExtractComponentRefMarksZeroGameObjectAsPresent(t *testing.T) {
+	body := "" +
+		"Transform:\n" +
+		"  m_GameObject: {fileID: 0}\n"
+
+	component, _, issues := extractComponentRef(4000, body, 4, "Transform")
+
+	if len(issues) != 0 {
+		t.Fatalf("expected no issues, got %v", issues)
+	}
+	if !component.HasGameObject {
+		t.Fatalf("expected game object presence for inline fileID 0")
+	}
+	if component.GameObject != 0 {
+		t.Fatalf("expected game object 0, got %d", component.GameObject)
+	}
+}
+
 func TestExtractComponentRefUnknownGameObjectShapeReturnsIssue(t *testing.T) {
 	body := string(loadGraphFixture(t, "unknown_gameobject_ref_shape.prefab"))
 
@@ -105,6 +173,24 @@ func TestExtractComponentRefUnknownGameObjectShapeReturnsIssue(t *testing.T) {
 	}
 	if len(issues) != 1 || issues[0].Code != core.IssueUnknownFieldShape {
 		t.Fatalf("expected UNKNOWN_FIELD_SHAPE issue, got %v", issues)
+	}
+}
+
+func TestExtractComponentRefMarksExplicitZeroGameObjectAsPresent(t *testing.T) {
+	body := "" +
+		"Transform:\n" +
+		"  m_GameObject: {fileID: 0}\n"
+
+	component, _, issues := extractComponentRef(4000, body, 4, "Transform")
+
+	if len(issues) != 0 {
+		t.Fatalf("expected no issues, got %v", issues)
+	}
+	if !component.HasGameObject {
+		t.Fatalf("expected HasGameObject to be true for explicit {fileID: 0}")
+	}
+	if component.GameObject != 0 {
+		t.Fatalf("expected explicit zero game object, got %d", component.GameObject)
 	}
 }
 
