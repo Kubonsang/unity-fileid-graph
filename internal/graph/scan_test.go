@@ -3,7 +3,7 @@ package graph
 import (
 	"testing"
 
-	"unity-fileid-graph/internal/core"
+	"github.com/Kubonsang/unity-fileid-graph/internal/core"
 )
 
 func TestScanBodyLinesKeepsEffectiveText(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"unity-fileid-graph/internal/core"
+	"github.com/Kubonsang/unity-fileid-graph/internal/core"
 )
 
 type bodyLine struct {
