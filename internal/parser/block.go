@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"unity-fileid-graph/internal/core"
+	"github.com/Kubonsang/unity-fileid-graph/internal/core"
 )
 
 type headerMeta struct {
@@ -120,7 +120,7 @@ func moveTrailingDocumentMarker(result *core.ParseResult) {
 	lastBlock := result.Blocks[len(result.Blocks)-1]
 	body := []byte(lastBlock.BodyRaw)
 
-	for _, marker := range [][]byte{[]byte("...\r\n"), []byte("...\n")} {
+	for _, marker := range [][]byte{[]byte("...\r\n"), []byte("...\n"), []byte("...")} {
 		if bytes.HasSuffix(body, marker) {
 			lastBlock.BodyRaw = string(body[:len(body)-len(marker)])
 			result.TrailerRaw = string(marker)

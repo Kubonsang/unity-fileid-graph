@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"unity-fileid-graph/internal/parser"
+	"github.com/Kubonsang/unity-fileid-graph/internal/parser"
 )
 
 var validNamespaces = map[string]struct{}{
