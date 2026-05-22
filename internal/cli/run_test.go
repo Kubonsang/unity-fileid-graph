@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/Kubonsang/unity-fileid-graph/internal/core"
 )
 
 func TestRunRejectsMissingArguments(t *testing.T) {
@@ -110,6 +113,133 @@ func TestRunReturnsParseErrorForInvalidHeaderFixture(t *testing.T) {
 
 	if got := stderr.String(); got == "" || !bytes.Contains([]byte(got), []byte("parse ")) {
 		t.Fatalf("expected clear parse error on stderr, got %q", got)
+	}
+}
+
+func TestWriteGraphPrintsUnknownTypeForUnsupportedComponentRef(t *testing.T) {
+	graphResult := &core.Graph{
+		GameObjects: map[int64]*core.GameObjectNode{
+			1000: {FileID: 1000, Name: "Player", Components: []int64{23000}},
+		},
+		Components: map[int64]*core.ComponentNode{},
+		Transforms: map[int64]*core.TransformNode{},
+		Issues: []core.Issue{
+			{
+				Code:    core.IssueUnsupportedComponentRef,
+				FileID:  23000,
+				Message: "component referenced by GameObject but not extracted in v0.2",
+			},
+		},
+	}
+
+	stdout := &bytes.Buffer{}
+	exitCode := writeGraph(stdout, graphResult)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", exitCode)
+	}
+	output := stdout.String()
+	if !strings.Contains(output, "component=23000 type=UNKNOWN") {
+		t.Fatalf("expected UNKNOWN component output, got %q", output)
+	}
+	if !strings.Contains(output, "WARN code=UNSUPPORTED_COMPONENT_REF file_id=23000") {
+		t.Fatalf("expected warning output, got %q", output)
+	}
+}
+
+func TestWriteGraphPrintsUnknownGameObjectWhenRefMissing(t *testing.T) {
+	graphResult := &core.Graph{
+		GameObjects: map[int64]*core.GameObjectNode{},
+		Components: map[int64]*core.ComponentNode{
+			11400000: {
+				FileID:        11400000,
+				ClassID:       114,
+				TypeName:      "MonoBehaviour",
+				HasGameObject: false,
+			},
+		},
+		Transforms: map[int64]*core.TransformNode{},
+	}
+
+	stdout := &bytes.Buffer{}
+	exitCode := writeGraph(stdout, graphResult)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", exitCode)
+	}
+	if !strings.Contains(stdout.String(), "COMPONENT id=11400000 type=MonoBehaviour game_object=UNKNOWN") {
+		t.Fatalf("expected UNKNOWN game object output, got %q", stdout.String())
+	}
+}
+
+func TestWriteGraphPrintsExplicitZeroGameObjectWhenPresent(t *testing.T) {
+	graphResult := &core.Graph{
+		GameObjects: map[int64]*core.GameObjectNode{},
+		Components: map[int64]*core.ComponentNode{
+			4000: {
+				FileID:        4000,
+				ClassID:       4,
+				TypeName:      "Transform",
+				HasGameObject: true,
+				GameObject:    0,
+			},
+		},
+		Transforms: map[int64]*core.TransformNode{},
+	}
+
+	stdout := &bytes.Buffer{}
+	exitCode := writeGraph(stdout, graphResult)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", exitCode)
+	}
+	if !strings.Contains(stdout.String(), "COMPONENT id=4000 type=Transform game_object=0") {
+		t.Fatalf("expected explicit zero game object output, got %q", stdout.String())
+	}
+}
+
+func TestWriteGraphOrdersSectionsDeterministicallyAndPreservesComponentOrder(t *testing.T) {
+	graphResult := &core.Graph{
+		GameObjects: map[int64]*core.GameObjectNode{
+			2000: {FileID: 2000, Name: "Second", Components: []int64{33000, 11000}},
+			1000: {FileID: 1000, Name: "First", Components: []int64{22000}},
+		},
+		Components: map[int64]*core.ComponentNode{
+			11000: {FileID: 11000, TypeName: "Transform", HasGameObject: true, GameObject: 2000},
+			22000: {FileID: 22000, TypeName: "MeshRenderer", HasGameObject: true, GameObject: 1000},
+			33000: {FileID: 33000, TypeName: "MonoBehaviour", HasGameObject: true, GameObject: 2000},
+		},
+		Transforms: map[int64]*core.TransformNode{
+			9000: {FileID: 9000, GameObject: 2000},
+			4000: {FileID: 4000, GameObject: 1000},
+		},
+	}
+
+	stdout := &bytes.Buffer{}
+	exitCode := writeGraph(stdout, graphResult)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", exitCode)
+	}
+
+	want := "" +
+		"GAMEOBJECT id=1000 name=First\n" +
+		"  component=22000 type=MeshRenderer\n" +
+		"\n" +
+		"GAMEOBJECT id=2000 name=Second\n" +
+		"  component=33000 type=MonoBehaviour\n" +
+		"  component=11000 type=Transform\n" +
+		"\n" +
+		"COMPONENT id=11000 type=Transform game_object=2000\n" +
+		"\n" +
+		"COMPONENT id=22000 type=MeshRenderer game_object=1000\n" +
+		"\n" +
+		"COMPONENT id=33000 type=MonoBehaviour game_object=2000\n" +
+		"\n" +
+		"TRANSFORM id=4000 game_object=1000 father=0 children=none\n" +
+		"TRANSFORM id=9000 game_object=2000 father=0 children=none\n"
+	if got := stdout.String(); got != want {
+		t.Fatalf("unexpected deterministic graph output:\nwant %q\ngot  %q", want, got)
 	}
 }
 
