@@ -29,6 +29,19 @@ func TestExtractGameObjectPreservesComponentOrder(t *testing.T) {
 	}
 }
 
+func TestExtractGameObjectUnknownComponentShapeReturnsIssue(t *testing.T) {
+	body := string(loadGraphFixture(t, "unknown_component_shape.prefab"))
+
+	got, issues := extractGameObject(1000, body)
+
+	if len(got.Components) != 0 {
+		t.Fatalf("expected no extracted components, got %v", got.Components)
+	}
+	if len(issues) != 1 || issues[0].Code != core.IssueUnknownFieldShape {
+		t.Fatalf("expected UNKNOWN_FIELD_SHAPE issue, got %v", issues)
+	}
+}
+
 func TestExtractTransformChildrenUsesChildListParser(t *testing.T) {
 	body := "" +
 		"Transform:\n" +
