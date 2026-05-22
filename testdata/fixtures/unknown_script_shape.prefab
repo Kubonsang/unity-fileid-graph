@@ -1,0 +1,4 @@
+MonoBehaviour:
+  m_GameObject: {fileID: 1000}
+  m_Script:
+    nested: unexpected

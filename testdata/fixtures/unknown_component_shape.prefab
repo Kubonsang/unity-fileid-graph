@@ -1,0 +1,5 @@
+GameObject:
+  m_Name: Player
+  m_Component:
+  - component:
+      nested: unexpected
