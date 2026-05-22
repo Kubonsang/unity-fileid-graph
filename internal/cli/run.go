@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Kubonsang/unity-fileid-graph/internal/core"
+	"github.com/Kubonsang/unity-fileid-graph/internal/graph"
 	"github.com/Kubonsang/unity-fileid-graph/internal/parser"
 )
 
@@ -30,7 +31,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	if args[1] != "blocks" {
+	if args[1] != "blocks" && args[1] != "graph" {
 		writeUsage(stderr)
 		return 2
 	}
@@ -47,6 +48,20 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	if args[1] == "blocks" {
+		return writeBlocks(stdout, result)
+	}
+
+	graphResult, err := graph.Build(result)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "graph %s: %v\n", args[2], err)
+		return 1
+	}
+
+	return writeGraph(stdout, graphResult)
+}
+
+func writeBlocks(stdout io.Writer, result *core.ParseResult) int {
 	for _, block := range result.Blocks {
 		stripped := 0
 		if block.IsStripped {
@@ -58,7 +73,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 }
 
 func writeUsage(stderr io.Writer) {
-	_, _ = fmt.Fprintln(stderr, "usage: uyaml <prefab|scene|asset|mat> blocks <file>")
+	_, _ = fmt.Fprintln(stderr, "usage: uyaml <prefab|scene|asset|mat> <blocks|graph> <file>")
 }
 
 func writeGraph(stdout io.Writer, graphResult *core.Graph) int {
@@ -103,7 +118,9 @@ func writeGraph(stdout io.Writer, graphResult *core.Graph) int {
 	}
 
 	if len(graphResult.Issues) > 0 {
-		_, _ = fmt.Fprintln(stdout)
+		if len(graphResult.Transforms) > 0 {
+			_, _ = fmt.Fprintln(stdout)
+		}
 		for _, issue := range graphResult.Issues {
 			_, _ = fmt.Fprintf(stdout, "WARN code=%s file_id=%d message=%q\n", issue.Code, issue.FileID, issue.Message)
 		}

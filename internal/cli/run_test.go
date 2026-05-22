@@ -116,6 +116,40 @@ func TestRunReturnsParseErrorForInvalidHeaderFixture(t *testing.T) {
 	}
 }
 
+func TestRunMatchesGoldenGraphPrefab(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "graph", "../../testdata/fixtures/graph_prefab.prefab"}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d: %s", exitCode, stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+	if got := stdout.String(); got != loadGolden(t, "graph_prefab.graph.txt") {
+		t.Fatalf("graph golden mismatch:\nwant %q\ngot  %q", loadGolden(t, "graph_prefab.graph.txt"), got)
+	}
+}
+
+func TestRunGraphPrintsWarningsAndKeepsExitCodeZero(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "graph", "../../testdata/fixtures/tab_indent.prefab"}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0 for warning-only graph, got %d", exitCode)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+	if got := stdout.String(); got != loadGolden(t, "tab_indent.graph.txt") {
+		t.Fatalf("warning golden mismatch:\nwant %q\ngot  %q", loadGolden(t, "tab_indent.graph.txt"), got)
+	}
+}
+
 func TestWriteGraphPrintsUnknownTypeForUnsupportedComponentRef(t *testing.T) {
 	graphResult := &core.Graph{
 		GameObjects: map[int64]*core.GameObjectNode{

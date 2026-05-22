@@ -31,7 +31,7 @@ func scanBodyLines(body string, fileID int64) ([]bodyLine, []core.Issue) {
 			issues = append(issues, core.Issue{
 				Code:    core.IssueTabIndent,
 				FileID:  fileID,
-				Message: "tab indentation is not supported in analysis view",
+				Message: "tab indentation is unsupported in v0.2 field scanning",
 			})
 		}
 
