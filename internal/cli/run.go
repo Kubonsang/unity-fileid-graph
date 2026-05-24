@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Kubonsang/unity-fileid-graph/internal/check"
 	"github.com/Kubonsang/unity-fileid-graph/internal/core"
 	"github.com/Kubonsang/unity-fileid-graph/internal/graph"
 	"github.com/Kubonsang/unity-fileid-graph/internal/parser"
@@ -31,7 +32,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	if args[1] != "blocks" && args[1] != "graph" {
+	if args[1] != "blocks" && args[1] != "graph" && args[1] != "check" {
 		writeUsage(stderr)
 		return 2
 	}
@@ -58,7 +59,11 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	return writeGraph(stdout, graphResult)
+	if args[1] == "graph" {
+		return writeGraph(stdout, graphResult)
+	}
+
+	return writeCheck(stdout, check.Run(graphResult))
 }
 
 func writeBlocks(stdout io.Writer, result *core.ParseResult) int {
@@ -73,7 +78,7 @@ func writeBlocks(stdout io.Writer, result *core.ParseResult) int {
 }
 
 func writeUsage(stderr io.Writer) {
-	_, _ = fmt.Fprintln(stderr, "usage: uyaml <prefab|scene|asset|mat> <blocks|graph> <file>")
+	_, _ = fmt.Fprintln(stderr, "usage: uyaml <prefab|scene|asset|mat> <blocks|graph|check> <file>")
 }
 
 func writeGraph(stdout io.Writer, graphResult *core.Graph) int {
@@ -127,6 +132,60 @@ func writeGraph(stdout io.Writer, graphResult *core.Graph) int {
 	}
 
 	return 0
+}
+
+func writeCheck(stdout io.Writer, result *core.CheckResult) int {
+	_, _ = fmt.Fprintf(stdout, "STATUS status=%s blocks=%d game_objects=%d components=%d transforms=%d\n",
+		result.Status,
+		result.BlockCount,
+		result.GameObjectCount,
+		result.ComponentCount,
+		result.TransformCount,
+	)
+
+	for _, finding := range result.Errors {
+		_, _ = fmt.Fprintf(stdout, "ERROR code=%s", finding.Code)
+		writeCheckFindingFields(stdout, finding)
+		_, _ = fmt.Fprintln(stdout)
+	}
+
+	for _, finding := range result.Warnings {
+		_, _ = fmt.Fprintf(stdout, "WARN code=%s", finding.Code)
+		writeCheckFindingFields(stdout, finding)
+		_, _ = fmt.Fprintln(stdout)
+	}
+
+	if result.Status == core.CheckStatusError {
+		return 1
+	}
+	return 0
+}
+
+func writeCheckFindingFields(stdout io.Writer, finding core.CheckFinding) {
+	if finding.FileID != 0 {
+		_, _ = fmt.Fprintf(stdout, " file_id=%d", finding.FileID)
+	}
+	if finding.GameObjectID != 0 {
+		_, _ = fmt.Fprintf(stdout, " game_object_id=%d", finding.GameObjectID)
+	}
+	if finding.ComponentID != 0 {
+		_, _ = fmt.Fprintf(stdout, " component_id=%d", finding.ComponentID)
+	}
+	if finding.TransformID != 0 {
+		_, _ = fmt.Fprintf(stdout, " transform_id=%d", finding.TransformID)
+	}
+	if finding.ParentID != 0 {
+		_, _ = fmt.Fprintf(stdout, " parent_id=%d", finding.ParentID)
+	}
+	if finding.ChildID != 0 {
+		_, _ = fmt.Fprintf(stdout, " child_id=%d", finding.ChildID)
+	}
+	if finding.Reason != "" {
+		_, _ = fmt.Fprintf(stdout, " reason=%s", finding.Reason)
+	}
+	if finding.Message != "" {
+		_, _ = fmt.Fprintf(stdout, " message=%q", finding.Message)
+	}
 }
 
 func sortedGameObjectKeys(gameObjects map[int64]*core.GameObjectNode) []int64 {

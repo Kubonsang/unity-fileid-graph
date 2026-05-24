@@ -150,6 +150,57 @@ func TestRunGraphPrintsWarningsAndKeepsExitCodeZero(t *testing.T) {
 	}
 }
 
+func TestRunMatchesGoldenCheckOK(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "check", "../../testdata/fixtures/check_ok.prefab"}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d: %s", exitCode, stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+	if got := stdout.String(); got != loadGolden(t, "check_ok.check.txt") {
+		t.Fatalf("check golden mismatch:\nwant %q\ngot  %q", loadGolden(t, "check_ok.check.txt"), got)
+	}
+}
+
+func TestRunMatchesGoldenDuplicateFileIDCheck(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "check", "../../testdata/fixtures/check_duplicate_fileid.prefab"}, stdout, stderr)
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d: %s", exitCode, stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+	if got := stdout.String(); got != loadGolden(t, "check_duplicate_fileid.check.txt") {
+		t.Fatalf("check golden mismatch:\nwant %q\ngot  %q", loadGolden(t, "check_duplicate_fileid.check.txt"), got)
+	}
+}
+
+func TestRunMatchesGoldenWarnOnlyCheck(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "check", "../../testdata/fixtures/tab_indent.prefab"}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d: %s", exitCode, stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+	if got := stdout.String(); got != loadGolden(t, "check_tab_indent.check.txt") {
+		t.Fatalf("check golden mismatch:\nwant %q\ngot  %q", loadGolden(t, "check_tab_indent.check.txt"), got)
+	}
+}
+
 func TestWriteGraphPrintsUnknownTypeForUnsupportedComponentRef(t *testing.T) {
 	graphResult := &core.Graph{
 		GameObjects: map[int64]*core.GameObjectNode{
