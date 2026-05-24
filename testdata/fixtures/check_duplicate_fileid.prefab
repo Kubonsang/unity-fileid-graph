@@ -1,6 +1,13 @@
 --- !u!1 &1000
 GameObject:
   m_Name: FirstDuplicate
+  m_Component:
+  - component: {fileID: 4000}
+--- !u!4 &4000
+Transform:
+  m_GameObject: {fileID: 1000}
+  m_Father: {fileID: 0}
+  m_Children: []
 --- !u!114 &1000
 MonoBehaviour:
   m_GameObject: {fileID: 1000}
@@ -8,6 +15,13 @@ MonoBehaviour:
 --- !u!1 &900
 GameObject:
   m_Name: SecondDuplicate
+  m_Component:
+  - component: {fileID: 4001}
+--- !u!4 &4001
+Transform:
+  m_GameObject: {fileID: 900}
+  m_Father: {fileID: 0}
+  m_Children: []
 --- !u!114 &900
 MonoBehaviour:
   m_GameObject: {fileID: 900}

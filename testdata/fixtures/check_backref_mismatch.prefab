@@ -1,0 +1,25 @@
+--- !u!1 &1000
+GameObject:
+  m_Name: Owner
+  m_Component:
+  - component: {fileID: 4000}
+  - component: {fileID: 11400000}
+--- !u!1 &2000
+GameObject:
+  m_Name: Other
+  m_Component:
+  - component: {fileID: 4001}
+--- !u!4 &4000
+Transform:
+  m_GameObject: {fileID: 1000}
+  m_Father: {fileID: 0}
+  m_Children: []
+--- !u!4 &4001
+Transform:
+  m_GameObject: {fileID: 2000}
+  m_Father: {fileID: 0}
+  m_Children: []
+--- !u!114 &11400000
+MonoBehaviour:
+  m_GameObject: {fileID: 2000}
+  m_Script: {fileID: 11500000, guid: 11111111111111111111111111111111, type: 3}

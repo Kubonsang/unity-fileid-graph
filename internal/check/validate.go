@@ -28,6 +28,11 @@ func Run(graphResult *core.Graph) *core.CheckResult {
 	validateDuplicateFileIDs(graphResult, result)
 	validateMissingComponentBlocks(graphResult, result)
 	validateMissingGameObjectBlocks(graphResult, result)
+	validateGameObjectComponentBackrefs(graphResult, result)
+	validateTransformParentChildRelationships(graphResult, result)
+	validateMissingTransformComponents(graphResult, result)
+	validateSuspiciousMonoBehaviourScripts(graphResult, result)
+	appendGraphWarnings(graphResult, result)
 
 	result.RecomputeStatus()
 	return result
@@ -48,6 +53,9 @@ func validateDuplicateFileIDs(graphResult *core.Graph, result *core.CheckResult)
 
 func validateMissingComponentBlocks(graphResult *core.Graph, result *core.CheckResult) {
 	for _, gameObjectID := range sortedGameObjectIDs(graphResult.GameObjects) {
+		if hasGraphIssueForFile(graphResult, gameObjectID) {
+			continue
+		}
 		gameObject := graphResult.GameObjects[gameObjectID]
 		for _, componentID := range gameObject.Components {
 			if component, ok := graphResult.Components[componentID]; ok && component != nil {
@@ -81,6 +89,176 @@ func validateMissingGameObjectBlocks(graphResult *core.Graph, result *core.Check
 	}
 }
 
+func validateGameObjectComponentBackrefs(graphResult *core.Graph, result *core.CheckResult) {
+	for _, gameObjectID := range sortedGameObjectIDs(graphResult.GameObjects) {
+		if gameObjectHasRelatedIssues(graphResult, gameObjectID) {
+			continue
+		}
+		gameObject := graphResult.GameObjects[gameObjectID]
+		for _, componentID := range gameObject.Components {
+			if hasGraphIssueForFile(graphResult, componentID) {
+				continue
+			}
+			component, ok := graphResult.Components[componentID]
+			if !ok || component == nil {
+				continue
+			}
+
+			reason := ""
+			switch {
+			case !component.HasGameObject || component.GameObject == 0:
+				reason = "component_missing_gameobject"
+			case component.GameObject != gameObjectID:
+				reason = "component_points_to_other_gameobject"
+			}
+
+			if reason == "" {
+				continue
+			}
+			result.Errors = append(result.Errors, core.CheckFinding{
+				Code:         core.CheckGoComponentBackrefMismatch,
+				GameObjectID: gameObjectID,
+				ComponentID:  componentID,
+				Reason:       reason,
+			})
+		}
+	}
+}
+
+func validateTransformParentChildRelationships(graphResult *core.Graph, result *core.CheckResult) {
+	for _, transformID := range sortedTransformIDs(graphResult.Transforms) {
+		if hasGraphIssueForFile(graphResult, transformID) {
+			continue
+		}
+		transform := graphResult.Transforms[transformID]
+		if transform == nil {
+			continue
+		}
+
+		if transform.Father != 0 {
+			if _, ok := graphResult.Transforms[transform.Father]; !ok {
+				result.Errors = append(result.Errors, core.CheckFinding{
+					Code:        core.CheckTransformParentChildMismatch,
+					TransformID: transformID,
+					ParentID:    transform.Father,
+					Reason:      "missing_parent_transform",
+				})
+			}
+		}
+
+		for _, childID := range transform.Children {
+			if hasGraphIssueForFile(graphResult, childID) {
+				continue
+			}
+			childTransform, ok := graphResult.Transforms[childID]
+			if !ok || childTransform == nil {
+				result.Errors = append(result.Errors, core.CheckFinding{
+					Code:        core.CheckTransformParentChildMismatch,
+					TransformID: transformID,
+					ChildID:     childID,
+					Reason:      "missing_child_transform",
+				})
+				continue
+			}
+			if childTransform.Father != transformID {
+				result.Errors = append(result.Errors, core.CheckFinding{
+					Code:        core.CheckTransformParentChildMismatch,
+					TransformID: transformID,
+					ParentID:    childTransform.Father,
+					ChildID:     childID,
+					Reason:      "child_father_mismatch",
+				})
+			}
+		}
+	}
+}
+
+func validateMissingTransformComponents(graphResult *core.Graph, result *core.CheckResult) {
+	for _, gameObjectID := range sortedGameObjectIDs(graphResult.GameObjects) {
+		if gameObjectHasRelatedIssues(graphResult, gameObjectID) {
+			continue
+		}
+		gameObject := graphResult.GameObjects[gameObjectID]
+		if gameObject == nil || gameObject.Transform != 0 {
+			continue
+		}
+		result.Errors = append(result.Errors, core.CheckFinding{
+			Code:         core.CheckMissingTransformComponent,
+			GameObjectID: gameObjectID,
+			Reason:       "missing_transform_component",
+		})
+	}
+}
+
+func validateSuspiciousMonoBehaviourScripts(graphResult *core.Graph, result *core.CheckResult) {
+	for _, componentID := range sortedComponentIDs(graphResult.Components) {
+		component := graphResult.Components[componentID]
+		if component == nil || component.TypeName != "MonoBehaviour" {
+			continue
+		}
+		if !isSuspiciousScript(component.Script) {
+			continue
+		}
+		result.Errors = append(result.Errors, core.CheckFinding{
+			Code:        core.CheckSuspiciousMonoBehaviourScript,
+			ComponentID: componentID,
+			Reason:      "missing_script_metadata",
+		})
+	}
+}
+
+func appendGraphWarnings(graphResult *core.Graph, result *core.CheckResult) {
+	for _, issue := range graphResult.Issues {
+		result.Warnings = append(result.Warnings, core.CheckFinding{
+			Code:    issue.Code,
+			FileID:  issue.FileID,
+			Message: issue.Message,
+		})
+	}
+}
+
+func isSuspiciousScript(script *core.ScriptRef) bool {
+	if script == nil {
+		return true
+	}
+	if script.FileID == 0 || script.GUID == "" {
+		return true
+	}
+	return script.Type <= 0
+}
+
+func hasGraphIssueForFile(graphResult *core.Graph, fileID int64) bool {
+	for _, issue := range graphResult.Issues {
+		if issue.FileID == fileID {
+			return true
+		}
+	}
+	return false
+}
+
+func gameObjectHasRelatedIssues(graphResult *core.Graph, gameObjectID int64) bool {
+	if hasGraphIssueForFile(graphResult, gameObjectID) {
+		return true
+	}
+
+	gameObject := graphResult.GameObjects[gameObjectID]
+	if gameObject == nil {
+		return false
+	}
+
+	for _, componentID := range gameObject.Components {
+		if hasGraphIssueForFile(graphResult, componentID) {
+			return true
+		}
+	}
+
+	if gameObject.Transform != 0 && hasGraphIssueForFile(graphResult, gameObject.Transform) {
+		return true
+	}
+
+	return false
+}
+
 func sortedBlockIDs(blocksByID map[int64][]*core.Block) []int64 {
 	keys := make([]int64, 0, len(blocksByID))
 	for fileID := range blocksByID {
@@ -102,6 +280,15 @@ func sortedGameObjectIDs(gameObjects map[int64]*core.GameObjectNode) []int64 {
 func sortedComponentIDs(components map[int64]*core.ComponentNode) []int64 {
 	keys := make([]int64, 0, len(components))
 	for fileID := range components {
+		keys = append(keys, fileID)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+func sortedTransformIDs(transforms map[int64]*core.TransformNode) []int64 {
+	keys := make([]int64, 0, len(transforms))
+	for fileID := range transforms {
 		keys = append(keys, fileID)
 	}
 	slices.Sort(keys)

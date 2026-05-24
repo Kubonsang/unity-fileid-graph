@@ -13,4 +13,10 @@ Transform:
 GameObject:
   m_Name: MissingSecond
   m_Component:
+  - component: {fileID: 4001}
   - component: {fileID: 11400001}
+--- !u!4 &4001
+Transform:
+  m_GameObject: {fileID: 2000}
+  m_Father: {fileID: 0}
+  m_Children: []

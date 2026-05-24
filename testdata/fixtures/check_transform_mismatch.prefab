@@ -1,0 +1,32 @@
+--- !u!1 &1000
+GameObject:
+  m_Name: Parent
+  m_Component:
+  - component: {fileID: 4000}
+--- !u!4 &4000
+Transform:
+  m_GameObject: {fileID: 1000}
+  m_Father: {fileID: 9999}
+  m_Children:
+    - {fileID: 4001}
+    - {fileID: 8888}
+--- !u!1 &1001
+GameObject:
+  m_Name: Child
+  m_Component:
+  - component: {fileID: 4001}
+--- !u!4 &4001
+Transform:
+  m_GameObject: {fileID: 1001}
+  m_Father: {fileID: 0}
+  m_Children: []
+--- !u!1 &1002
+GameObject:
+  m_Name: Sibling
+  m_Component:
+  - component: {fileID: 4002}
+--- !u!4 &4002
+Transform:
+  m_GameObject: {fileID: 1002}
+  m_Father: {fileID: 0}
+  m_Children: []

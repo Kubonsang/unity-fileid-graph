@@ -57,7 +57,7 @@ func TestRunDetectsDuplicateFileID(t *testing.T) {
 	if result.Status != core.CheckStatusError {
 		t.Fatalf("expected status %q, got %q", core.CheckStatusError, result.Status)
 	}
-	if result.BlockCount != 4 || result.GameObjectCount != 2 || result.ComponentCount != 2 || result.TransformCount != 0 {
+	if result.BlockCount != 6 || result.GameObjectCount != 2 || result.ComponentCount != 4 || result.TransformCount != 2 {
 		t.Fatalf("unexpected counts: %+v", result)
 	}
 	if len(result.Warnings) != 0 {
@@ -82,7 +82,7 @@ func TestRunDetectsMissingComponentBlock(t *testing.T) {
 	if result.Status != core.CheckStatusError {
 		t.Fatalf("expected status %q, got %q", core.CheckStatusError, result.Status)
 	}
-	if result.BlockCount != 3 || result.GameObjectCount != 2 || result.ComponentCount != 1 || result.TransformCount != 1 {
+	if result.BlockCount != 4 || result.GameObjectCount != 2 || result.ComponentCount != 2 || result.TransformCount != 2 {
 		t.Fatalf("unexpected counts: %+v", result)
 	}
 	if len(result.Warnings) != 0 {
@@ -121,6 +121,228 @@ func TestRunDetectsMissingGameObjectBlock(t *testing.T) {
 	}
 	if result.Errors[1].Code != core.CheckMissingGameObjectBlock || result.Errors[1].GameObjectID != 1000 || result.Errors[1].ComponentID != 11400000 || result.Errors[1].Reason != "missing_gameobject_block" {
 		t.Fatalf("unexpected second error: %+v", result.Errors[1])
+	}
+}
+
+func TestRunDetectsGameObjectComponentBackrefMismatch(t *testing.T) {
+	graphResult := buildFixtureGraph(t, "check_backref_mismatch.prefab")
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusError {
+		t.Fatalf("expected status %q, got %q", core.CheckStatusError, result.Status)
+	}
+	if result.BlockCount != 5 || result.GameObjectCount != 2 || result.ComponentCount != 3 || result.TransformCount != 2 {
+		t.Fatalf("unexpected counts: %+v", result)
+	}
+	if len(result.Warnings) != 0 {
+		t.Fatalf("expected no warnings, got %v", result.Warnings)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(result.Errors))
+	}
+	if result.Errors[0].Code != core.CheckGoComponentBackrefMismatch || result.Errors[0].GameObjectID != 1000 || result.Errors[0].ComponentID != 11400000 || result.Errors[0].Reason != "component_points_to_other_gameobject" {
+		t.Fatalf("unexpected error: %+v", result.Errors[0])
+	}
+}
+
+func TestRunDetectsTransformParentChildMismatch(t *testing.T) {
+	graphResult := buildFixtureGraph(t, "check_transform_mismatch.prefab")
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusError {
+		t.Fatalf("expected status %q, got %q", core.CheckStatusError, result.Status)
+	}
+	if result.BlockCount != 6 || result.GameObjectCount != 3 || result.ComponentCount != 3 || result.TransformCount != 3 {
+		t.Fatalf("unexpected counts: %+v", result)
+	}
+	if len(result.Warnings) != 0 {
+		t.Fatalf("expected no warnings, got %v", result.Warnings)
+	}
+	if len(result.Errors) != 3 {
+		t.Fatalf("expected 3 errors, got %d", len(result.Errors))
+	}
+	if result.Errors[0].Code != core.CheckTransformParentChildMismatch || result.Errors[0].TransformID != 4000 || result.Errors[0].ParentID != 9999 || result.Errors[0].Reason != "missing_parent_transform" {
+		t.Fatalf("unexpected first error: %+v", result.Errors[0])
+	}
+	if result.Errors[1].Code != core.CheckTransformParentChildMismatch || result.Errors[1].TransformID != 4000 || result.Errors[1].ChildID != 4001 || result.Errors[1].Reason != "child_father_mismatch" {
+		t.Fatalf("unexpected second error: %+v", result.Errors[1])
+	}
+	if result.Errors[2].Code != core.CheckTransformParentChildMismatch || result.Errors[2].TransformID != 4000 || result.Errors[2].ChildID != 8888 || result.Errors[2].Reason != "missing_child_transform" {
+		t.Fatalf("unexpected third error: %+v", result.Errors[2])
+	}
+}
+
+func TestRunDetectsMissingTransformComponentOnGameObject(t *testing.T) {
+	graphResult := buildFixtureGraph(t, "check_missing_transform.prefab")
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusError {
+		t.Fatalf("expected status %q, got %q", core.CheckStatusError, result.Status)
+	}
+	if result.BlockCount != 2 || result.GameObjectCount != 1 || result.ComponentCount != 1 || result.TransformCount != 0 {
+		t.Fatalf("unexpected counts: %+v", result)
+	}
+	if len(result.Warnings) != 0 {
+		t.Fatalf("expected no warnings, got %v", result.Warnings)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(result.Errors))
+	}
+	if result.Errors[0].Code != core.CheckMissingTransformComponent || result.Errors[0].GameObjectID != 1000 || result.Errors[0].Reason != "missing_transform_component" {
+		t.Fatalf("unexpected error: %+v", result.Errors[0])
+	}
+}
+
+func TestRunDetectsSuspiciousMonoBehaviourScript(t *testing.T) {
+	graphResult := buildFixtureGraph(t, "check_suspicious_script.prefab")
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusError {
+		t.Fatalf("expected status %q, got %q", core.CheckStatusError, result.Status)
+	}
+	if result.BlockCount != 3 || result.GameObjectCount != 1 || result.ComponentCount != 2 || result.TransformCount != 1 {
+		t.Fatalf("unexpected counts: %+v", result)
+	}
+	if len(result.Warnings) != 0 {
+		t.Fatalf("expected no warnings, got %v", result.Warnings)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(result.Errors))
+	}
+	if result.Errors[0].Code != core.CheckSuspiciousMonoBehaviourScript || result.Errors[0].ComponentID != 11400000 || result.Errors[0].Reason != "missing_script_metadata" {
+		t.Fatalf("unexpected error: %+v", result.Errors[0])
+	}
+}
+
+func TestRunDetectsSuspiciousMonoBehaviourScriptWhenMetadataShapeIsMalformed(t *testing.T) {
+	graphResult := &core.Graph{
+		Blocks:      []*core.Block{{FileID: 11400000, ClassID: 114}},
+		BlocksByID:  map[int64][]*core.Block{11400000: []*core.Block{{FileID: 11400000, ClassID: 114}}},
+		ObjectsByID: map[int64][]*core.UnityObject{},
+		GameObjects: map[int64]*core.GameObjectNode{},
+		Components: map[int64]*core.ComponentNode{
+			11400000: {
+				FileID:        11400000,
+				ClassID:       114,
+				TypeName:      "MonoBehaviour",
+				HasGameObject: false,
+				Script:        nil,
+			},
+		},
+		Transforms: map[int64]*core.TransformNode{},
+		Issues: []core.Issue{
+			{Code: core.IssueUnknownFieldShape, FileID: 11400000, Message: "unsupported MonoBehaviour.m_Script shape"},
+		},
+	}
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusError {
+		t.Fatalf("expected status %q, got %q", core.CheckStatusError, result.Status)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(result.Errors))
+	}
+	if result.Errors[0].Code != core.CheckSuspiciousMonoBehaviourScript || result.Errors[0].ComponentID != 11400000 || result.Errors[0].Reason != "missing_script_metadata" {
+		t.Fatalf("unexpected suspicious-script error: %+v", result.Errors[0])
+	}
+	if len(result.Warnings) != 1 {
+		t.Fatalf("expected 1 warning passthrough, got %d", len(result.Warnings))
+	}
+	if result.Warnings[0].Code != core.IssueUnknownFieldShape || result.Warnings[0].FileID != 11400000 {
+		t.Fatalf("unexpected warning passthrough: %+v", result.Warnings[0])
+	}
+}
+
+func TestRunReturnsWarnStatusWhenGraphOnlyHasWarnings(t *testing.T) {
+	graphResult := &core.Graph{
+		Blocks:      []*core.Block{},
+		BlocksByID:  map[int64][]*core.Block{},
+		ObjectsByID: map[int64][]*core.UnityObject{},
+		GameObjects: map[int64]*core.GameObjectNode{},
+		Components:  map[int64]*core.ComponentNode{},
+		Transforms:  map[int64]*core.TransformNode{},
+		Issues: []core.Issue{
+			{Code: core.IssueTabIndent, FileID: 1000, Message: "tab indentation is unsupported in v0.2 field scanning"},
+		},
+	}
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusWarn {
+		t.Fatalf("expected status %q, got %q", core.CheckStatusWarn, result.Status)
+	}
+	if result.BlockCount != 0 || result.GameObjectCount != 0 || result.ComponentCount != 0 || result.TransformCount != 0 {
+		t.Fatalf("unexpected counts: %+v", result)
+	}
+	if len(result.Errors) != 0 {
+		t.Fatalf("expected no errors, got %v", result.Errors)
+	}
+	if len(result.Warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d", len(result.Warnings))
+	}
+	if result.Warnings[0].Code != core.IssueTabIndent || result.Warnings[0].FileID != 1000 || result.Warnings[0].Message != "tab indentation is unsupported in v0.2 field scanning" {
+		t.Fatalf("unexpected warning: %+v", result.Warnings[0])
+	}
+}
+
+func TestRunSkipsBackrefAndMissingTransformChecksWhenReferencedComponentHasGraphIssue(t *testing.T) {
+	graphResult := &core.Graph{
+		GameObjects: map[int64]*core.GameObjectNode{
+			1000: {FileID: 1000, Components: []int64{11400000}},
+		},
+		Components: map[int64]*core.ComponentNode{
+			11400000: {
+				FileID:        11400000,
+				ClassID:       4,
+				TypeName:      "Transform",
+				HasGameObject: false,
+			},
+		},
+		Transforms: map[int64]*core.TransformNode{},
+		Issues: []core.Issue{
+			{Code: core.IssueUnknownFieldShape, FileID: 11400000, Message: "unsupported Component.m_GameObject shape"},
+		},
+	}
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusWarn {
+		t.Fatalf("expected status %q, got %q", core.CheckStatusWarn, result.Status)
+	}
+	if len(result.Errors) != 0 {
+		t.Fatalf("expected no false-positive errors, got %v", result.Errors)
+	}
+	if len(result.Warnings) != 1 || result.Warnings[0].Code != core.IssueUnknownFieldShape {
+		t.Fatalf("expected passthrough warning only, got %v", result.Warnings)
+	}
+}
+
+func TestRunSkipsParentChildMismatchWhenChildTransformHasGraphIssue(t *testing.T) {
+	graphResult := &core.Graph{
+		Transforms: map[int64]*core.TransformNode{
+			4000: {FileID: 4000, Children: []int64{4001}},
+			4001: {FileID: 4001, Father: 0},
+		},
+		Issues: []core.Issue{
+			{Code: core.IssueUnknownFieldShape, FileID: 4001, Message: "unsupported Transform.m_Father shape"},
+		},
+	}
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusWarn {
+		t.Fatalf("expected status %q, got %q", core.CheckStatusWarn, result.Status)
+	}
+	if len(result.Errors) != 0 {
+		t.Fatalf("expected no false-positive errors, got %v", result.Errors)
+	}
+	if len(result.Warnings) != 1 || result.Warnings[0].Code != core.IssueUnknownFieldShape {
+		t.Fatalf("expected passthrough warning only, got %v", result.Warnings)
 	}
 }
 
