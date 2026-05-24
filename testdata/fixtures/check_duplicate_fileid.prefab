@@ -1,0 +1,14 @@
+--- !u!1 &1000
+GameObject:
+  m_Name: FirstDuplicate
+--- !u!114 &1000
+MonoBehaviour:
+  m_GameObject: {fileID: 1000}
+  m_Script: {fileID: 11500000, guid: 11111111111111111111111111111111, type: 3}
+--- !u!1 &900
+GameObject:
+  m_Name: SecondDuplicate
+--- !u!114 &900
+MonoBehaviour:
+  m_GameObject: {fileID: 900}
+  m_Script: {fileID: 11500000, guid: 22222222222222222222222222222222, type: 3}
