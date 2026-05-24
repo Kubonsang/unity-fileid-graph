@@ -44,9 +44,10 @@ func validateDuplicateFileIDs(graphResult *core.Graph, result *core.CheckResult)
 			continue
 		}
 		result.Errors = append(result.Errors, core.CheckFinding{
-			Code:   core.CheckDuplicateFileID,
-			FileID: fileID,
-			Reason: "duplicate_block_headers",
+			Code:           core.CheckDuplicateFileID,
+			DuplicateCount: len(graphResult.BlocksByID[fileID]),
+			FileID:         fileID,
+			Reason:         "duplicate_block_headers",
 		})
 	}
 }

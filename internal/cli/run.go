@@ -135,7 +135,7 @@ func writeGraph(stdout io.Writer, graphResult *core.Graph) int {
 }
 
 func writeCheck(stdout io.Writer, result *core.CheckResult) int {
-	_, _ = fmt.Fprintf(stdout, "STATUS status=%s blocks=%d game_objects=%d components=%d transforms=%d\n",
+	_, _ = fmt.Fprintf(stdout, "GRAPH_CHECK status=%s blocks=%d gameobjects=%d components=%d transforms=%d\n",
 		result.Status,
 		result.BlockCount,
 		result.GameObjectCount,
@@ -145,13 +145,13 @@ func writeCheck(stdout io.Writer, result *core.CheckResult) int {
 
 	for _, finding := range result.Errors {
 		_, _ = fmt.Fprintf(stdout, "ERROR code=%s", finding.Code)
-		writeCheckFindingFields(stdout, finding)
+		writeCheckErrorFields(stdout, finding)
 		_, _ = fmt.Fprintln(stdout)
 	}
 
 	for _, finding := range result.Warnings {
 		_, _ = fmt.Fprintf(stdout, "WARN code=%s", finding.Code)
-		writeCheckFindingFields(stdout, finding)
+		writeCheckWarningFields(stdout, finding)
 		_, _ = fmt.Fprintln(stdout)
 	}
 
@@ -161,24 +161,49 @@ func writeCheck(stdout io.Writer, result *core.CheckResult) int {
 	return 0
 }
 
-func writeCheckFindingFields(stdout io.Writer, finding core.CheckFinding) {
+func writeCheckErrorFields(stdout io.Writer, finding core.CheckFinding) {
+	switch finding.Code {
+	case core.CheckDuplicateFileID:
+		_, _ = fmt.Fprintf(stdout, " file_id=%d duplicates=%d", finding.FileID, finding.DuplicateCount)
+	case core.CheckMissingComponentBlock:
+		_, _ = fmt.Fprintf(stdout, " go=%d component_id=%d reason=%s", finding.GameObjectID, finding.ComponentID, finding.Reason)
+	case core.CheckMissingGameObjectBlock:
+		_, _ = fmt.Fprintf(stdout, " component=%d m_GameObject=%d reason=%s", finding.ComponentID, finding.GameObjectID, finding.Reason)
+	case core.CheckGoComponentBackrefMismatch:
+		_, _ = fmt.Fprintf(stdout, " component=%d go=%d reason=%s", finding.ComponentID, finding.GameObjectID, finding.Reason)
+	case core.CheckTransformParentChildMismatch:
+		if finding.ParentID != 0 {
+			_, _ = fmt.Fprintf(stdout, " parent=%d", finding.ParentID)
+		}
+		if finding.ChildID != 0 {
+			_, _ = fmt.Fprintf(stdout, " child=%d", finding.ChildID)
+		}
+		if finding.TransformID != 0 {
+			_, _ = fmt.Fprintf(stdout, " transform=%d", finding.TransformID)
+		}
+		if finding.Reason != "" {
+			_, _ = fmt.Fprintf(stdout, " reason=%s", finding.Reason)
+		}
+	case core.CheckMissingTransformComponent:
+		_, _ = fmt.Fprintf(stdout, " go=%d reason=%s", finding.GameObjectID, finding.Reason)
+	case core.CheckSuspiciousMonoBehaviourScript:
+		_, _ = fmt.Fprintf(stdout, " component=%d reason=%s", finding.ComponentID, finding.Reason)
+	default:
+		if finding.FileID != 0 {
+			_, _ = fmt.Fprintf(stdout, " file_id=%d", finding.FileID)
+		}
+		if finding.Reason != "" {
+			_, _ = fmt.Fprintf(stdout, " reason=%s", finding.Reason)
+		}
+	}
+}
+
+func writeCheckWarningFields(stdout io.Writer, finding core.CheckFinding) {
 	if finding.FileID != 0 {
 		_, _ = fmt.Fprintf(stdout, " file_id=%d", finding.FileID)
 	}
-	if finding.GameObjectID != 0 {
-		_, _ = fmt.Fprintf(stdout, " game_object_id=%d", finding.GameObjectID)
-	}
 	if finding.ComponentID != 0 {
-		_, _ = fmt.Fprintf(stdout, " component_id=%d", finding.ComponentID)
-	}
-	if finding.TransformID != 0 {
-		_, _ = fmt.Fprintf(stdout, " transform_id=%d", finding.TransformID)
-	}
-	if finding.ParentID != 0 {
-		_, _ = fmt.Fprintf(stdout, " parent_id=%d", finding.ParentID)
-	}
-	if finding.ChildID != 0 {
-		_, _ = fmt.Fprintf(stdout, " child_id=%d", finding.ChildID)
+		_, _ = fmt.Fprintf(stdout, " component=%d", finding.ComponentID)
 	}
 	if finding.Reason != "" {
 		_, _ = fmt.Fprintf(stdout, " reason=%s", finding.Reason)

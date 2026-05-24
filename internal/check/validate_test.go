@@ -66,10 +66,10 @@ func TestRunDetectsDuplicateFileID(t *testing.T) {
 	if len(result.Errors) != 2 {
 		t.Fatalf("expected 2 errors, got %d", len(result.Errors))
 	}
-	if result.Errors[0].Code != core.CheckDuplicateFileID || result.Errors[0].FileID != 900 || result.Errors[0].Reason != "duplicate_block_headers" {
+	if result.Errors[0].Code != core.CheckDuplicateFileID || result.Errors[0].FileID != 900 || result.Errors[0].DuplicateCount != 2 || result.Errors[0].Reason != "duplicate_block_headers" {
 		t.Fatalf("unexpected first error: %+v", result.Errors[0])
 	}
-	if result.Errors[1].Code != core.CheckDuplicateFileID || result.Errors[1].FileID != 1000 || result.Errors[1].Reason != "duplicate_block_headers" {
+	if result.Errors[1].Code != core.CheckDuplicateFileID || result.Errors[1].FileID != 1000 || result.Errors[1].DuplicateCount != 2 || result.Errors[1].Reason != "duplicate_block_headers" {
 		t.Fatalf("unexpected second error: %+v", result.Errors[1])
 	}
 }

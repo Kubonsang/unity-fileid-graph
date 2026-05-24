@@ -18,6 +18,7 @@ const (
 
 type CheckFinding struct {
 	Code         string
+	DuplicateCount int
 	FileID       int64
 	GameObjectID int64
 	ComponentID  int64
