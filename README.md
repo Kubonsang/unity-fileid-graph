@@ -80,6 +80,8 @@ Use it on version-controlled files, review the diff, and treat blocked results a
 
 `v0.8` keeps `remove-component` prefab-only and does not expand the built-in allowlist yet. `MeshRenderer` and `MeshFilter` remain explicitly blocked with dependency-aware messages because sibling-pair safety rules are not implemented.
 
+Scene-file structural mutation was evaluated in `v0.8` and remains out of scope. `remove-component` stays limited to `prefab` because scene-scale object graphs and cross-object blast radius need a separate safety design before write support is allowed.
+
 Example warning output:
 
 ```text

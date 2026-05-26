@@ -363,6 +363,20 @@ func TestRunRemoveComponentRejectsMissingExperimentalFlag(t *testing.T) {
 	}
 }
 
+func TestRunRemoveComponentRejectsSceneNamespace(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"scene", "remove-component", "../../testdata/fixtures/remove_component_ok.prefab", "--id", "65000", "--experimental", "--write"}, stdout, stderr)
+
+	if exitCode != 2 {
+		t.Fatalf("expected exit code 2, got %d", exitCode)
+	}
+	if !strings.Contains(stderr.String(), "uyaml prefab remove-component") {
+		t.Fatalf("expected prefab-only usage guidance, got %q", stderr.String())
+	}
+}
+
 func TestRunRemoveComponentPrintsExperimentalSuccessLine(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
