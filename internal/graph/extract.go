@@ -175,3 +175,8 @@ func extractMonoBehaviour(fileID int64, body string) (*core.ComponentNode, []cor
 
 	return component, issues
 }
+
+func extractGenericComponent(fileID int64, body string, classID int, typeName string) (*core.ComponentNode, []core.Issue) {
+	component, _, issues := extractComponentRef(fileID, body, classID, typeName)
+	return component, issues
+}

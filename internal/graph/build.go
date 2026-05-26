@@ -43,6 +43,10 @@ func Build(parsed *core.ParseResult) (*core.Graph, error) {
 			component, issues := extractMonoBehaviour(block.FileID, block.BodyRaw)
 			graph.Components[block.FileID] = component
 			graph.Issues = append(graph.Issues, issues...)
+		case 54, 65:
+			component, issues := extractGenericComponent(block.FileID, block.BodyRaw, block.ClassID, typeNameForClassID(block.ClassID))
+			graph.Components[block.FileID] = component
+			graph.Issues = append(graph.Issues, issues...)
 		default:
 			graph.Issues = append(graph.Issues, core.Issue{
 				Code:    core.IssueUnknownClassID,
@@ -75,6 +79,10 @@ func typeNameForClassID(classID int) string {
 		return "Transform"
 	case 114:
 		return "MonoBehaviour"
+	case 54:
+		return "Rigidbody"
+	case 65:
+		return "BoxCollider"
 	default:
 		return "UNKNOWN"
 	}

@@ -42,11 +42,6 @@ func RunRemoveComponent(opts core.RemoveComponentOptions) (*core.RemoveComponent
 		result.MarkBlocked("remove-component requires --write")
 		return result, nil
 	}
-	if pre.Status == core.CheckStatusError {
-		result.Code = core.MutationCodePrecheckError
-		result.MarkBlocked("graph-check before mutation returned ERROR")
-		return result, nil
-	}
 
 	targetBlock, code := FindUniqueBlockByFileID(parsed, opts.FileID)
 	if code != "" {
@@ -105,6 +100,11 @@ func RunRemoveComponent(opts core.RemoveComponentOptions) (*core.RemoveComponent
 	if !hasEntry {
 		result.Code = core.MutationCodeComponentOwnerMismatch
 		result.MarkBlocked("target component owner and GameObject component list do not match")
+		return result, nil
+	}
+	if pre.Status == core.CheckStatusError {
+		result.Code = core.MutationCodePrecheckError
+		result.MarkBlocked("graph-check before mutation returned ERROR")
 		return result, nil
 	}
 

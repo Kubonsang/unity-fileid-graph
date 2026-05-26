@@ -2,7 +2,13 @@
 GameObject:
   m_Name: OwnerMismatch
   m_Component:
+  - component: {fileID: 4001}
   - component: {fileID: 65000}
+--- !u!4 &4001
+Transform:
+  m_GameObject: {fileID: 1000}
+  m_Father: {fileID: 0}
+  m_Children: []
 --- !u!1 &9999
 GameObject:
   m_Name: WrongOwner
