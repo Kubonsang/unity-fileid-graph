@@ -223,6 +223,26 @@ func TestRunRemoveComponentRestoresOriginalOnRealFinalCheckError(t *testing.T) {
 	}
 }
 
+func TestRunRemoveComponentHappyPathStillSucceedsWithoutHooks(t *testing.T) {
+	target := copyFixture(t, "remove_component_ok.prefab")
+
+	result, err := RunRemoveComponent(core.RemoveComponentOptions{
+		InputPath:    target,
+		FileID:       65000,
+		Experimental: true,
+		Write:        true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != core.MutationStatusExperimental {
+		t.Fatalf("expected EXPERIMENTAL, got %q", result.Status)
+	}
+	if result.FinalCheck != core.CheckStatusOK {
+		t.Fatalf("expected final-check OK, got %q", result.FinalCheck)
+	}
+}
+
 func fixturePath(name string) string {
 	return filepath.Join("..", "..", "testdata", "fixtures", name)
 }
