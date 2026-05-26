@@ -11,6 +11,7 @@ import (
 	"github.com/Kubonsang/unity-fileid-graph/internal/check"
 	"github.com/Kubonsang/unity-fileid-graph/internal/core"
 	"github.com/Kubonsang/unity-fileid-graph/internal/graph"
+	"github.com/Kubonsang/unity-fileid-graph/internal/mutate"
 	"github.com/Kubonsang/unity-fileid-graph/internal/parser"
 	"github.com/Kubonsang/unity-fileid-graph/internal/roundtrip"
 )
@@ -34,13 +35,16 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	command := args[1]
-	if command != "blocks" && command != "graph" && command != "check" && command != "roundtrip" {
+	if command != "blocks" && command != "graph" && command != "check" && command != "roundtrip" && command != "set" {
 		writeUsage(stderr)
 		return 2
 	}
 
 	if command == "roundtrip" {
 		return runRoundtrip(args, stdout, stderr)
+	}
+	if command == "set" {
+		return runSet(args, stdout, stderr)
 	}
 
 	if len(args) != 3 {
@@ -91,6 +95,7 @@ func writeBlocks(stdout io.Writer, result *core.ParseResult) int {
 func writeUsage(stderr io.Writer) {
 	_, _ = fmt.Fprintln(stderr, "usage: uyaml <prefab|scene|asset|mat> <blocks|graph|check> <file>")
 	_, _ = fmt.Fprintln(stderr, "   or: uyaml <prefab|scene|asset|mat> roundtrip <file> --out <dest> [--mode lossless-block-copy]")
+	_, _ = fmt.Fprintln(stderr, "   or: uyaml <prefab|scene|asset|mat> set <file> --id <fileID> --field <top-level-field-name> --value <value>")
 }
 
 func writeGraph(stdout io.Writer, graphResult *core.Graph) int {
@@ -293,6 +298,90 @@ func writeRoundtrip(stdout io.Writer, result *core.RoundtripResult) int {
 
 func boolInt(value bool) int {
 	if value {
+		return 1
+	}
+	return 0
+}
+
+func runSet(args []string, stdout, stderr io.Writer) int {
+	if len(args) != 9 {
+		writeUsage(stderr)
+		return 2
+	}
+
+	opts := core.SetOptions{InputPath: args[2]}
+	idCount := 0
+	fieldCount := 0
+	valueCount := 0
+	for i := 3; i < len(args); i += 2 {
+		if i+1 >= len(args) {
+			writeUsage(stderr)
+			return 2
+		}
+		switch args[i] {
+		case "--id":
+			idCount++
+			if idCount > 1 {
+				writeUsage(stderr)
+				return 2
+			}
+			fileID, err := strconv.ParseInt(args[i+1], 10, 64)
+			if err != nil {
+				writeUsage(stderr)
+				return 2
+			}
+			opts.FileID = fileID
+		case "--field":
+			fieldCount++
+			if fieldCount > 1 {
+				writeUsage(stderr)
+				return 2
+			}
+			opts.Field = args[i+1]
+		case "--value":
+			valueCount++
+			if valueCount > 1 {
+				writeUsage(stderr)
+				return 2
+			}
+			opts.Value = args[i+1]
+		default:
+			writeUsage(stderr)
+			return 2
+		}
+	}
+	if idCount != 1 || fieldCount != 1 || valueCount != 1 || opts.Field == "" {
+		writeUsage(stderr)
+		return 2
+	}
+
+	result, err := mutate.RunSet(opts)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "set %s: %v\n", opts.InputPath, err)
+		return 1
+	}
+	return writeSet(stdout, result)
+}
+
+func writeSet(stdout io.Writer, result *core.SetResult) int {
+	if result.Status == core.MutationStatusBlocked {
+		_, _ = fmt.Fprintf(stdout, "SET status=BLOCKED code=%s file_id=%d field=%s message=%q\n", result.Code, result.FileID, result.Field, result.Message)
+		return 0
+	}
+
+	_, _ = fmt.Fprintf(stdout, "SET status=%s file_id=%d field=%s old=%s new=%s pre_check=%s temp_check=%s final_check=%s backup=%s\n",
+		result.Status,
+		result.FileID,
+		result.Field,
+		result.OldValue,
+		result.NewValue,
+		result.PreCheck,
+		result.TempCheck,
+		result.FinalCheck,
+		result.BackupPath,
+	)
+
+	if result.Status == core.MutationStatusError {
 		return 1
 	}
 	return 0

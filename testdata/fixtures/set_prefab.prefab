@@ -1,0 +1,12 @@
+--- !u!1 &1000
+GameObject:
+  m_IsActive: 1
+  m_Name: Player
+  m_Component:
+  - component: {fileID: 4000}
+--- !u!4 &4000
+Transform:
+  m_GameObject: {fileID: 1000}
+  m_Father: {fileID: 0}
+  m_Children: []
+  m_RootOrder: 0

@@ -1,0 +1,6 @@
+--- !u!1 &1000
+GameObject:
+  m_IsActive: 1
+--- !u!4 &1000
+Transform:
+  m_RootOrder: 0

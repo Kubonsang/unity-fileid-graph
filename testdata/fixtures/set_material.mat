@@ -1,0 +1,4 @@
+--- !u!21 &2100000
+Material:
+  m_Name: Body
+  m_Shininess: 0.5
