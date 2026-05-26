@@ -122,6 +122,9 @@ func formatScalarReplacement(field, oldValue, rawValue string) (string, error) {
 			return "", fmt.Errorf("invalid bool literal")
 		}
 	}
+	if isKnownStringField(field) {
+		return strconv.Quote(rawValue), nil
+	}
 	if _, err := strconv.ParseInt(oldValue, 10, 64); err == nil {
 		if _, err := strconv.ParseInt(rawValue, 10, 64); err != nil {
 			return "", err
@@ -140,6 +143,15 @@ func formatScalarReplacement(field, oldValue, rawValue string) (string, error) {
 func isKnownBoolField(field string) bool {
 	switch field {
 	case "m_IsActive", "m_Enabled":
+		return true
+	default:
+		return false
+	}
+}
+
+func isKnownStringField(field string) bool {
+	switch field {
+	case "m_Name":
 		return true
 	default:
 		return false

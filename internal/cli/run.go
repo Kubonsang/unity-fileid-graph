@@ -310,6 +310,9 @@ func runSet(args []string, stdout, stderr io.Writer) int {
 	}
 
 	opts := core.SetOptions{InputPath: args[2]}
+	idCount := 0
+	fieldCount := 0
+	valueCount := 0
 	for i := 3; i < len(args); i += 2 {
 		if i+1 >= len(args) {
 			writeUsage(stderr)
@@ -317,6 +320,11 @@ func runSet(args []string, stdout, stderr io.Writer) int {
 		}
 		switch args[i] {
 		case "--id":
+			idCount++
+			if idCount > 1 {
+				writeUsage(stderr)
+				return 2
+			}
 			fileID, err := strconv.ParseInt(args[i+1], 10, 64)
 			if err != nil {
 				writeUsage(stderr)
@@ -324,13 +332,27 @@ func runSet(args []string, stdout, stderr io.Writer) int {
 			}
 			opts.FileID = fileID
 		case "--field":
+			fieldCount++
+			if fieldCount > 1 {
+				writeUsage(stderr)
+				return 2
+			}
 			opts.Field = args[i+1]
 		case "--value":
+			valueCount++
+			if valueCount > 1 {
+				writeUsage(stderr)
+				return 2
+			}
 			opts.Value = args[i+1]
 		default:
 			writeUsage(stderr)
 			return 2
 		}
+	}
+	if idCount != 1 || fieldCount != 1 || valueCount != 1 || opts.Field == "" {
+		writeUsage(stderr)
+		return 2
 	}
 
 	result, err := mutate.RunSet(opts)

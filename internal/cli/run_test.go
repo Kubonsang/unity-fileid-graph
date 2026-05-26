@@ -302,6 +302,36 @@ func TestRunSetReturnsBlockedExitZero(t *testing.T) {
 	}
 }
 
+func TestRunSetRejectsMissingValueFlagWithoutMutating(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	source := filepath.Join("..", "..", "testdata", "fixtures", "set_prefab.prefab")
+	target := filepath.Join(t.TempDir(), "set_prefab.prefab")
+	input, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("read source: %v", err)
+	}
+	if err := os.WriteFile(target, input, 0o644); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+
+	exitCode := Run([]string{"prefab", "set", target, "--id", "1000", "--field", "m_IsActive", "--field", "m_Name"}, stdout, stderr)
+
+	if exitCode != 2 {
+		t.Fatalf("expected exit 2, got %d stderr=%q stdout=%q", exitCode, stderr.String(), stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "usage:") {
+		t.Fatalf("expected usage output, got %q", stderr.String())
+	}
+	after, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("read target: %v", err)
+	}
+	if string(after) != string(input) {
+		t.Fatalf("expected file to remain unchanged on malformed set command")
+	}
+}
+
 func TestWriteRoundtripReturnsErrorExitForFailedVerification(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	exitCode := writeRoundtrip(stdout, &core.RoundtripResult{

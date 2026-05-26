@@ -47,6 +47,18 @@ func TestPlanScalarEditFormatsStringAsQuotedYAML(t *testing.T) {
 	}
 }
 
+func TestPlanScalarEditTreatsKnownStringFieldWithNumericOldValueAsString(t *testing.T) {
+	body := "GameObject:\n  m_Name: 123\n"
+
+	plan, err := PlanScalarEdit(body, "m_Name", "Boss")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if plan.NewValue != "\"Boss\"" {
+		t.Fatalf("expected quoted string replacement, got %q", plan.NewValue)
+	}
+}
+
 func TestPlanScalarEditReturnsFieldNotFoundSeparately(t *testing.T) {
 	body := "GameObject:\n  m_Name: Player\n"
 
