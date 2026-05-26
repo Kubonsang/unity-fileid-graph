@@ -34,3 +34,37 @@ func TestSetResultRecomputeStatusReturnsBlockedWhenCodePresent(t *testing.T) {
 		t.Fatalf("expected %q, got %q", MutationStatusBlocked, result.Status)
 	}
 }
+
+func TestRemoveComponentResultRecomputeStatusKeepsExperimentalForWarnOnlyChecks(t *testing.T) {
+	result := &RemoveComponentResult{
+		FileID:     65000,
+		ClassID:    65,
+		TypeName:   "BoxCollider",
+		GameObject: 1000,
+		PreCheck:   CheckStatusWarn,
+		TempCheck:  CheckStatusWarn,
+		FinalCheck: CheckStatusWarn,
+	}
+
+	result.RecomputeStatus()
+
+	if result.Status != MutationStatusExperimental {
+		t.Fatalf("expected %q, got %q", MutationStatusExperimental, result.Status)
+	}
+}
+
+func TestRemoveComponentResultBlockedStatusWins(t *testing.T) {
+	result := &RemoveComponentResult{
+		FileID:   4000,
+		ClassID:  4,
+		TypeName: "Transform",
+		Code:     MutationCodeTransformRemoveBlocked,
+		Status:   MutationStatusBlocked,
+	}
+
+	result.RecomputeStatus()
+
+	if result.Status != MutationStatusBlocked {
+		t.Fatalf("expected blocked status, got %q", result.Status)
+	}
+}
