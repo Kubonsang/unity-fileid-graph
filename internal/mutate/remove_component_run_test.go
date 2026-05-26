@@ -108,7 +108,7 @@ func TestCompleteWritePipelineRestoresBackupOnFinalCheckError(t *testing.T) {
 	checkCount := 0
 	pipeline, err := completeWritePipeline(target, mutated, defaultFileOps(), writePipelineOptions{
 		RestoreOnFinalCheckError: true,
-		CheckBytes: func(_ []byte) (string, error) {
+		CheckBytes: func(_ writePipelineCheckPhase, _ []byte) (string, error) {
 			checkCount++
 			if checkCount == 1 {
 				return core.CheckStatusOK, nil
@@ -132,6 +132,49 @@ func TestCompleteWritePipelineRestoresBackupOnFinalCheckError(t *testing.T) {
 	}
 	if string(got) != string(original) {
 		t.Fatalf("expected original restored, got %q", string(got))
+	}
+}
+
+func TestCompleteWritePipelineRunsPostReplaceHookBeforeFinalCheck(t *testing.T) {
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "sample.prefab")
+
+	original := []byte("--- !u!1 &1000\nGameObject:\n  m_Name: Original\n")
+	mutated := []byte("--- !u!1 &1000\nGameObject:\n  m_Name: Mutated\n")
+	corrupted := []byte("--- !u!1 &1000\nGameObject:\n  m_Name: Corrupted\n")
+
+	if err := os.WriteFile(target, original, 0o644); err != nil {
+		t.Fatalf("write original: %v", err)
+	}
+
+	pipeline, err := completeWritePipeline(target, mutated, defaultFileOps(), writePipelineOptions{
+		RestoreOnFinalCheckError: true,
+		CheckBytes: func(phase writePipelineCheckPhase, got []byte) (string, error) {
+			switch phase {
+			case writePipelineCheckTemp:
+				if string(got) != string(mutated) {
+					t.Fatalf("expected temp-check bytes to match mutated output")
+				}
+				return core.CheckStatusOK, nil
+			case writePipelineCheckFinal:
+				if string(got) != string(corrupted) {
+					t.Fatalf("expected final-check bytes to see post-replace corruption")
+				}
+				return core.CheckStatusError, nil
+			default:
+				t.Fatalf("unexpected phase: %q", phase)
+				return "", nil
+			}
+		},
+		AfterReplace: func(path string) error {
+			return os.WriteFile(path, corrupted, 0o644)
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !pipeline.Restored {
+		t.Fatalf("expected restored=true")
 	}
 }
 
