@@ -4,6 +4,7 @@ const (
 	RoundtripModeLosslessBlockCopy = "lossless-block-copy"
 
 	RoundtripStatusOK    = "OK"
+	RoundtripStatusWarn  = "WARN"
 	RoundtripStatusError = "ERROR"
 
 	EditorOpenNotChecked = "NOT_CHECKED"
@@ -22,9 +23,15 @@ type RoundtripResult struct {
 }
 
 func (r *RoundtripResult) RecomputeStatus() {
-	if r.BytesEqual && r.Reparsed && r.BlockSequenceEqual && r.GraphCheckStatus == CheckStatusOK {
-		r.Status = RoundtripStatusOK
-		return
+	if r.BytesEqual && r.Reparsed && r.BlockSequenceEqual {
+		switch r.GraphCheckStatus {
+		case CheckStatusOK:
+			r.Status = RoundtripStatusOK
+			return
+		case CheckStatusWarn:
+			r.Status = RoundtripStatusWarn
+			return
+		}
 	}
 
 	r.Status = RoundtripStatusError

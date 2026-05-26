@@ -56,6 +56,30 @@ func TestRunLosslessCopyPreservesCRLFFixture(t *testing.T) {
 	}
 }
 
+func TestRunLosslessCopyReturnsWarnForUnsupportedButPreservedFixture(t *testing.T) {
+	inputPath := filepath.Join("..", "..", "testdata", "fixtures", "material.mat")
+	input, err := os.ReadFile(inputPath)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	outputPath := filepath.Join(t.TempDir(), "material.copy.mat")
+	result, err := RunLosslessCopy(input, outputPath)
+	if err != nil {
+		t.Fatalf("RunLosslessCopy returned error: %v", err)
+	}
+
+	if result.Status != core.RoundtripStatusWarn {
+		t.Fatalf("expected %q, got %q", core.RoundtripStatusWarn, result.Status)
+	}
+	if !result.BytesEqual || !result.Reparsed || !result.BlockSequenceEqual {
+		t.Fatalf("expected all verification flags true, got %+v", result)
+	}
+	if result.GraphCheckStatus != core.CheckStatusWarn {
+		t.Fatalf("expected graph-check WARN, got %q", result.GraphCheckStatus)
+	}
+}
+
 func TestEqualBlockSequenceIncludesHeaderRawAndStripFlag(t *testing.T) {
 	left := &core.ParseResult{
 		Blocks: []*core.Block{

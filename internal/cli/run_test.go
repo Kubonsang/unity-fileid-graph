@@ -235,6 +235,27 @@ func TestRunRoundtripRejectsUnsupportedMode(t *testing.T) {
 	}
 }
 
+func TestRunRoundtripReturnsWarnStatusWithZeroExitCode(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	outPath := filepath.Join(t.TempDir(), "material.copy.mat")
+
+	exitCode := Run([]string{"mat", "roundtrip", "../../testdata/fixtures/material.mat", "--out", outPath}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "ROUNDTRIP status=WARN") {
+		t.Fatalf("expected WARN roundtrip output, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "graph_check=WARN") {
+		t.Fatalf("expected graph_check=WARN, got %q", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+}
+
 func TestWriteRoundtripReturnsErrorExitForFailedVerification(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	exitCode := writeRoundtrip(stdout, &core.RoundtripResult{
