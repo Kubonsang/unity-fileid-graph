@@ -1,0 +1,11 @@
+--- !u!1 &1000
+GameObject:
+  m_Name: DupOwner
+  m_Component:
+  - component: {fileID: 65000}
+--- !u!65 &65000
+BoxCollider:
+  m_GameObject: {fileID: 1000}
+--- !u!65 &65000
+BoxCollider:
+  m_GameObject: {fileID: 1000}

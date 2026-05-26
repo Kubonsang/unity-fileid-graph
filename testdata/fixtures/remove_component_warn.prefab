@@ -1,0 +1,18 @@
+--- !u!1 &1000
+GameObject:
+  m_Name: WarnPlayer
+  m_Component:
+  - component: {fileID: 4000}
+  - component: {fileID: 65000}
+--- !u!4 &4000
+Transform:
+  m_GameObject: {fileID: 1000}
+  m_Father: {fileID: 0}
+  m_Children: []
+--- !u!65 &65000
+BoxCollider:
+  m_GameObject: {fileID: 1000}
+  m_Enabled: 1
+--- !u!9999 &999900
+UnknownThing:
+  m_Name: DetachedWarnOnly
