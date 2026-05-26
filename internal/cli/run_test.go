@@ -201,6 +201,59 @@ func TestRunMatchesGoldenWarnOnlyCheck(t *testing.T) {
 	}
 }
 
+func TestRunRoundtripWritesOutputAndPrintsSummary(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	outPath := filepath.Join(t.TempDir(), "check_ok.copy.prefab")
+
+	exitCode := Run([]string{"prefab", "roundtrip", "../../testdata/fixtures/check_ok.prefab", "--out", outPath}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%q", exitCode, stderr.String())
+	}
+	want := "ROUNDTRIP status=OK mode=lossless-block-copy bytes_equal=1 reparsed=1 block_sequence_equal=1 graph_check=OK line_endings=LF editor_open=NOT_CHECKED out=" + outPath + "\n"
+	if stdout.String() != want {
+		t.Fatalf("unexpected stdout:\n%s", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+}
+
+func TestRunRoundtripRejectsUnsupportedMode(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	outPath := filepath.Join(t.TempDir(), "check_ok.copy.prefab")
+
+	exitCode := Run([]string{"prefab", "roundtrip", "../../testdata/fixtures/check_ok.prefab", "--out", outPath, "--mode", "yaml-node-serialize"}, stdout, stderr)
+
+	if exitCode != 2 {
+		t.Fatalf("expected exit 2, got %d", exitCode)
+	}
+	if !strings.Contains(stderr.String(), "usage:") {
+		t.Fatalf("expected usage output, got %q", stderr.String())
+	}
+}
+
+func TestWriteRoundtripReturnsErrorExitForFailedVerification(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	exitCode := writeRoundtrip(stdout, &core.RoundtripResult{
+		Status:             core.RoundtripStatusError,
+		Mode:               core.RoundtripModeLosslessBlockCopy,
+		OutputPath:         "/tmp/out.prefab",
+		BytesEqual:         false,
+		Reparsed:           true,
+		BlockSequenceEqual: true,
+		GraphCheckStatus:   core.CheckStatusOK,
+		LineEndingStyle:    "LF",
+		EditorOpenStatus:   core.EditorOpenNotChecked,
+	})
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit 1, got %d", exitCode)
+	}
+}
+
 func TestWriteGraphPrintsUnknownTypeForUnsupportedComponentRef(t *testing.T) {
 	graphResult := &core.Graph{
 		GameObjects: map[int64]*core.GameObjectNode{

@@ -32,12 +32,22 @@ Parser is infrastructure. Safety planner is the product.
 - Returns exit code `1` when integrity errors are found, and exit code `0` for `OK` or `WARN` results
 - Does not mutate YAML files or perform any write-back behavior
 
+## v0.4 Scope
+
+- Adds `roundtrip` for no-op lossless block copy experiments
+- Writes a copy using preserved `PreambleRaw`, `HeaderRaw`, `BodyRaw`, block order, and `TrailerRaw`
+- Verifies byte equality, reparse success, block-sequence equality, graph-check status, and line-ending preservation
+- Reports `editor_open=NOT_CHECKED` by default because no Unity Editor harness is wired in this milestone
+- Implements only `lossless-block-copy`
+- Does not implement mutation, scalar set, or generic YAML serialization
+
 ## Usage
 
 ```bash
 go run ./cmd/uyaml prefab blocks testdata/fixtures/simple_prefab.prefab
 go run ./cmd/uyaml prefab graph testdata/fixtures/graph_prefab.prefab
 go run ./cmd/uyaml prefab check testdata/fixtures/check_ok.prefab
+go run ./cmd/uyaml prefab roundtrip testdata/fixtures/check_ok.prefab --out /tmp/check_ok.copy.prefab
 ```
 
 Example warning output:
@@ -52,4 +62,10 @@ Example integrity error output:
 GRAPH_CHECK status=ERROR blocks=6 gameobjects=2 components=4 transforms=2
 ERROR code=DUPLICATE_FILE_ID file_id=900 duplicates=2
 ERROR code=DUPLICATE_FILE_ID file_id=1000 duplicates=2
+```
+
+Example roundtrip output:
+
+```text
+ROUNDTRIP status=OK mode=lossless-block-copy bytes_equal=1 reparsed=1 block_sequence_equal=1 graph_check=OK line_endings=LF editor_open=NOT_CHECKED out=/tmp/check_ok.copy.prefab
 ```

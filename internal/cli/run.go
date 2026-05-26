@@ -12,6 +12,7 @@ import (
 	"github.com/Kubonsang/unity-fileid-graph/internal/core"
 	"github.com/Kubonsang/unity-fileid-graph/internal/graph"
 	"github.com/Kubonsang/unity-fileid-graph/internal/parser"
+	"github.com/Kubonsang/unity-fileid-graph/internal/roundtrip"
 )
 
 var validNamespaces = map[string]struct{}{
@@ -22,7 +23,7 @@ var validNamespaces = map[string]struct{}{
 }
 
 func Run(args []string, stdout, stderr io.Writer) int {
-	if len(args) != 3 {
+	if len(args) < 3 {
 		writeUsage(stderr)
 		return 2
 	}
@@ -32,7 +33,17 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	if args[1] != "blocks" && args[1] != "graph" && args[1] != "check" {
+	command := args[1]
+	if command != "blocks" && command != "graph" && command != "check" && command != "roundtrip" {
+		writeUsage(stderr)
+		return 2
+	}
+
+	if command == "roundtrip" {
+		return runRoundtrip(args, stdout, stderr)
+	}
+
+	if len(args) != 3 {
 		writeUsage(stderr)
 		return 2
 	}
@@ -79,6 +90,7 @@ func writeBlocks(stdout io.Writer, result *core.ParseResult) int {
 
 func writeUsage(stderr io.Writer) {
 	_, _ = fmt.Fprintln(stderr, "usage: uyaml <prefab|scene|asset|mat> <blocks|graph|check> <file>")
+	_, _ = fmt.Fprintln(stderr, "   or: uyaml <prefab|scene|asset|mat> roundtrip <file> --out <dest> [--mode lossless-block-copy]")
 }
 
 func writeGraph(stdout io.Writer, graphResult *core.Graph) int {
@@ -211,6 +223,79 @@ func writeCheckWarningFields(stdout io.Writer, finding core.CheckFinding) {
 	if finding.Message != "" {
 		_, _ = fmt.Fprintf(stdout, " message=%q", finding.Message)
 	}
+}
+
+func runRoundtrip(args []string, stdout, stderr io.Writer) int {
+	if len(args) != 5 && len(args) != 7 {
+		writeUsage(stderr)
+		return 2
+	}
+
+	inputPath := args[2]
+	outputPath := ""
+	mode := core.RoundtripModeLosslessBlockCopy
+
+	for i := 3; i < len(args); i += 2 {
+		if i+1 >= len(args) {
+			writeUsage(stderr)
+			return 2
+		}
+		switch args[i] {
+		case "--out":
+			outputPath = args[i+1]
+		case "--mode":
+			mode = args[i+1]
+		default:
+			writeUsage(stderr)
+			return 2
+		}
+	}
+
+	if outputPath == "" || mode != core.RoundtripModeLosslessBlockCopy {
+		writeUsage(stderr)
+		return 2
+	}
+
+	input, err := os.ReadFile(inputPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "read %s: %v\n", inputPath, err)
+		return 1
+	}
+
+	result, err := roundtrip.RunLosslessCopy(input, outputPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "roundtrip %s: %v\n", inputPath, err)
+		return 1
+	}
+
+	return writeRoundtrip(stdout, result)
+}
+
+func writeRoundtrip(stdout io.Writer, result *core.RoundtripResult) int {
+	_, _ = fmt.Fprintf(stdout,
+		"ROUNDTRIP status=%s mode=%s bytes_equal=%d reparsed=%d block_sequence_equal=%d graph_check=%s line_endings=%s editor_open=%s out=%s\n",
+		result.Status,
+		result.Mode,
+		boolInt(result.BytesEqual),
+		boolInt(result.Reparsed),
+		boolInt(result.BlockSequenceEqual),
+		result.GraphCheckStatus,
+		result.LineEndingStyle,
+		result.EditorOpenStatus,
+		result.OutputPath,
+	)
+
+	if result.Status == core.RoundtripStatusError {
+		return 1
+	}
+	return 0
+}
+
+func boolInt(value bool) int {
+	if value {
+		return 1
+	}
+	return 0
 }
 
 func sortedGameObjectKeys(gameObjects map[int64]*core.GameObjectNode) []int64 {

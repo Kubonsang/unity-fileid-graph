@@ -55,3 +55,20 @@ func TestRunLosslessCopyPreservesCRLFFixture(t *testing.T) {
 		t.Fatalf("expected byte-identical CRLF copy")
 	}
 }
+
+func TestEqualBlockSequenceIncludesHeaderRawAndStripFlag(t *testing.T) {
+	left := &core.ParseResult{
+		Blocks: []*core.Block{
+			{Index: 0, ClassID: 1, FileID: 1000, HeaderRaw: "--- !u!1 &1000\n", IsStripped: false},
+		},
+	}
+	right := &core.ParseResult{
+		Blocks: []*core.Block{
+			{Index: 0, ClassID: 1, FileID: 1000, HeaderRaw: "--- !u!1 &1000 stripped\n", IsStripped: true},
+		},
+	}
+
+	if equalBlockSequence(left, right) {
+		t.Fatalf("expected block sequence mismatch when header tuple changes")
+	}
+}
