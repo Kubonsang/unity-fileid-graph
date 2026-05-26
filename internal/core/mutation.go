@@ -24,6 +24,7 @@ const (
 	MutationCodeComponentOwnerMismatch    = "COMPONENT_OWNER_MISMATCH"
 	MutationCodeComponentRefNotFound      = "COMPONENT_REF_NOT_FOUND"
 	MutationCodeUnsupportedComponentList  = "UNSUPPORTED_COMPONENT_LIST_SHAPE"
+	MutationCodeDanglingFileID            = "DANGLING_FILE_ID"
 	MutationCodeExperimentalFlagRequired  = "EXPERIMENTAL_FLAG_REQUIRED"
 	MutationCodeWriteFlagRequired         = "WRITE_FLAG_REQUIRED"
 )

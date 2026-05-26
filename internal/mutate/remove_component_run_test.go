@@ -69,6 +69,31 @@ func TestRunRemoveComponentBlocksOwnerMismatch(t *testing.T) {
 	}
 }
 
+func TestRunRemoveComponentBlocksDanglingLocalReference(t *testing.T) {
+	target := copyFixture(t, "remove_component_warn.prefab")
+	input, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("read target: %v", err)
+	}
+	input = append(input, []byte("--- !u!9998 &999800\nUnknownThing:\n  m_Target: {fileID: 65000}\n")...)
+	if err := os.WriteFile(target, input, 0o644); err != nil {
+		t.Fatalf("rewrite target: %v", err)
+	}
+
+	result, err := RunRemoveComponent(core.RemoveComponentOptions{
+		InputPath:    target,
+		FileID:       65000,
+		Experimental: true,
+		Write:        true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != core.MutationStatusBlocked || result.Code != core.MutationCodeDanglingFileID {
+		t.Fatalf("expected dangling fileID blocked result, got status=%q code=%q", result.Status, result.Code)
+	}
+}
+
 func TestCompleteWritePipelineRestoresBackupOnFinalCheckError(t *testing.T) {
 	tempDir := t.TempDir()
 	target := filepath.Join(tempDir, "sample.prefab")

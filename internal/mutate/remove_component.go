@@ -172,3 +172,20 @@ func DropBlockByFileID(parsed *core.ParseResult, fileID int64) (*core.ParseResul
 		TrailerRaw:  parsed.TrailerRaw,
 	}, nil
 }
+
+func remainingBlocksContainFileIDReference(parsed *core.ParseResult, fileID int64) bool {
+	if parsed == nil {
+		return false
+	}
+
+	pattern := regexp.MustCompile(`\bfileID:\s*` + regexp.QuoteMeta(strconv.FormatInt(fileID, 10)) + `\b`)
+	for _, block := range parsed.Blocks {
+		if block == nil {
+			continue
+		}
+		if pattern.MatchString(block.BodyRaw) {
+			return true
+		}
+	}
+	return false
+}

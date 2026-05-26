@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/Kubonsang/unity-fileid-graph/internal/core"
 )
 
 func TestExtractComponentOwnerGameObjectReadsInlinePPtr(t *testing.T) {
@@ -69,5 +71,18 @@ func TestHasExactComponentEntryRejectsUnsupportedShape(t *testing.T) {
 	_, err := HasExactComponentEntry(body, 65000)
 	if !errors.Is(err, ErrUnsupportedFieldShape) {
 		t.Fatalf("expected unsupported field shape, got %v", err)
+	}
+}
+
+func TestRemainingBlocksContainFileIDReferenceFindsDanglingTarget(t *testing.T) {
+	parsed := &core.ParseResult{
+		Blocks: []*core.Block{
+			{FileID: 1000, BodyRaw: "GameObject:\n  m_Name: Root\n"},
+			{FileID: 999900, BodyRaw: "UnknownThing:\n  m_Target: {fileID: 65000}\n"},
+		},
+	}
+
+	if !remainingBlocksContainFileIDReference(parsed, 65000) {
+		t.Fatalf("expected dangling local fileID reference to be detected")
 	}
 }

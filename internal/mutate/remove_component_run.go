@@ -125,6 +125,11 @@ func RunRemoveComponent(opts core.RemoveComponentOptions) (*core.RemoveComponent
 	if err != nil {
 		return nil, err
 	}
+	if remainingBlocksContainFileIDReference(editedParsed, opts.FileID) {
+		result.Code = core.MutationCodeDanglingFileID
+		result.MarkBlocked("remove-component would leave dangling local fileID references")
+		return result, nil
+	}
 
 	output := roundtrip.AssembleLosslessCopy(editedParsed)
 	pipeline, err := completeWritePipeline(opts.InputPath, output, defaultFileOps(), writePipelineOptions{
