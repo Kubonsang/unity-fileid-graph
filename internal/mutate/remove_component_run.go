@@ -17,6 +17,12 @@ var removableComponentTypes = map[int]string{
 }
 
 func RunRemoveComponent(opts core.RemoveComponentOptions) (*core.RemoveComponentResult, error) {
+	return runRemoveComponentWithDeps(opts, defaultFileOps(), writePipelineOptions{
+		RestoreOnFinalCheckError: true,
+	})
+}
+
+func runRemoveComponentWithDeps(opts core.RemoveComponentOptions, ops fileOps, pipelineOptions writePipelineOptions) (*core.RemoveComponentResult, error) {
 	input, err := os.ReadFile(opts.InputPath)
 	if err != nil {
 		return nil, err
@@ -132,9 +138,7 @@ func RunRemoveComponent(opts core.RemoveComponentOptions) (*core.RemoveComponent
 	}
 
 	output := roundtrip.AssembleLosslessCopy(editedParsed)
-	pipeline, err := completeWritePipeline(opts.InputPath, output, defaultFileOps(), writePipelineOptions{
-		RestoreOnFinalCheckError: true,
-	})
+	pipeline, err := completeWritePipeline(opts.InputPath, output, ops, pipelineOptions)
 	if err != nil {
 		return nil, err
 	}

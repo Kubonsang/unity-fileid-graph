@@ -178,6 +178,51 @@ func TestCompleteWritePipelineRunsPostReplaceHookBeforeFinalCheck(t *testing.T) 
 	}
 }
 
+func TestRunRemoveComponentRestoresOriginalOnRealFinalCheckError(t *testing.T) {
+	target := copyFixture(t, "remove_component_ok.prefab")
+	original, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("read original: %v", err)
+	}
+	corrupted, err := os.ReadFile(fixturePath("remove_component_final_check_corrupt.prefab"))
+	if err != nil {
+		t.Fatalf("read corrupt fixture: %v", err)
+	}
+
+	result, err := runRemoveComponentWithDeps(core.RemoveComponentOptions{
+		InputPath:    target,
+		FileID:       65000,
+		Experimental: true,
+		Write:        true,
+	}, defaultFileOps(), writePipelineOptions{
+		RestoreOnFinalCheckError: true,
+		CheckBytes:               nil,
+		AfterReplace: func(path string) error {
+			return os.WriteFile(path, corrupted, 0o644)
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != core.MutationStatusError {
+		t.Fatalf("expected ERROR, got %q", result.Status)
+	}
+	if result.Code != core.MutationCodeFinalCheckError {
+		t.Fatalf("expected FINAL_CHECK_ERROR, got %q", result.Code)
+	}
+	if result.Message != "restored=true" {
+		t.Fatalf("expected restored=true message, got %q", result.Message)
+	}
+
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("read restored target: %v", err)
+	}
+	if string(got) != string(original) {
+		t.Fatalf("expected original bytes restored")
+	}
+}
+
 func fixturePath(name string) string {
 	return filepath.Join("..", "..", "testdata", "fixtures", name)
 }

@@ -1,0 +1,10 @@
+--- !u!1 &1000
+GameObject:
+  m_Name: Player
+  m_IsActive: 1
+  m_Component:
+  - component: {fileID: 4000}
+--- !u!65 &65000
+BoxCollider:
+  m_GameObject: {fileID: 1000}
+  m_Enabled: 1
