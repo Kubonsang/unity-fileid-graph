@@ -1,0 +1,10 @@
+GAMEOBJECT id=1000 name=Player
+  component=11400000 type=MonoBehaviour
+  component=4000 type=Transform
+
+COMPONENT id=4000 type=Transform game_object=1000
+
+COMPONENT id=11400000 type=MonoBehaviour game_object=1000
+  script_file_id=11500000 guid=0123456789abcdef0123456789abcdef type=3
+
+TRANSFORM id=4000 game_object=1000 father=0 children=4001,4002

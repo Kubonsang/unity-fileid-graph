@@ -1,0 +1,10 @@
+--- !u!1 &2000
+GameObject:
+  m_Name: SceneRoot
+  m_Component:
+  - component: {fileID: 4001}
+--- !u!4 &4001
+Transform:
+  m_GameObject: {fileID: 2000}
+  m_Father: {fileID: 0}
+  m_Children: []

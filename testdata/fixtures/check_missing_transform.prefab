@@ -1,0 +1,9 @@
+--- !u!1 &1000
+GameObject:
+  m_Name: NoTransform
+  m_Component:
+  - component: {fileID: 11400000}
+--- !u!114 &11400000
+MonoBehaviour:
+  m_GameObject: {fileID: 1000}
+  m_Script: {fileID: 11500000, guid: 22222222222222222222222222222222, type: 3}
