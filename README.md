@@ -51,6 +51,14 @@ Parser is infrastructure. Safety planner is the product.
 - Blocks duplicate fileID, MonoBehaviour, stripped-object, nested-field, list, and inline-object mutations
 - Does not implement add/remove/reparent or generic YAML rewriting
 
+## v0.6 Scope
+
+- Adds experimental `remove-component` for a small built-in component allowlist only
+- Requires both `--experimental` and `--write`
+- Restricts the command to the `prefab` namespace
+- Preserves the transactional write pipeline from `v0.5`
+- Does not implement add-child, reparent, or generic structural editing
+
 ## Usage
 
 ```bash
@@ -59,10 +67,16 @@ go run ./cmd/uyaml prefab graph testdata/fixtures/graph_prefab.prefab
 go run ./cmd/uyaml prefab check testdata/fixtures/check_ok.prefab
 go run ./cmd/uyaml prefab roundtrip testdata/fixtures/check_ok.prefab --out /tmp/check_ok.copy.prefab
 go run ./cmd/uyaml prefab set testdata/fixtures/set_prefab.prefab --id 1000 --field m_IsActive --value 0
+cp testdata/fixtures/remove_component_ok.prefab /tmp/remove_component_ok.prefab
+go run ./cmd/uyaml prefab remove-component /tmp/remove_component_ok.prefab --id 65000 --experimental --write
 ```
 
 The `set` command modifies files in place after creating a backup.
 Use it on version-controlled files and review the diff.
+
+The `remove-component` command is intentionally experimental and allowlist-only in `v0.6`.
+It is limited to the `prefab` namespace, and `WARN` is reflected through the `pre_check`, `temp_check`, and `final_check` fields rather than a top-level `WARN` status.
+Use it on version-controlled files, review the diff, and treat blocked results as expected safety outcomes rather than command failures.
 
 Example warning output:
 
@@ -90,4 +104,10 @@ Example scalar set output:
 SET status=OK file_id=1000 field=m_IsActive old=1 new=0 pre_check=OK temp_check=OK final_check=OK backup=testdata/fixtures/set_prefab.prefab.bak
 SET status=BLOCKED code=MONOBEHAVIOUR_NATIVE_WRITE_BLOCKED file_id=11400000 field=m_Enabled message="native scalar writes to MonoBehaviour are blocked in v0.5"
 SET status=WARN file_id=2100000 field=m_Name old=Body new="Helmet" pre_check=WARN temp_check=WARN final_check=WARN backup=testdata/fixtures/set_material.mat.bak
+```
+
+Example remove-component output:
+
+```text
+REMOVE_COMPONENT status=EXPERIMENTAL file_id=65000 class_id=65 type=BoxCollider game_object=1000 pre_check=OK temp_check=OK final_check=OK backup=/tmp/remove_component_ok.prefab.bak
 ```
