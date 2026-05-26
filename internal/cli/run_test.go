@@ -256,6 +256,52 @@ func TestRunRoundtripReturnsWarnStatusWithZeroExitCode(t *testing.T) {
 	}
 }
 
+func TestRunSetMutatesFixtureCopy(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	source := filepath.Join("..", "..", "testdata", "fixtures", "set_prefab.prefab")
+	target := filepath.Join(t.TempDir(), "set_prefab.prefab")
+	input, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("read source: %v", err)
+	}
+	if err := os.WriteFile(target, input, 0o644); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+
+	exitCode := Run([]string{"prefab", "set", target, "--id", "1000", "--field", "m_IsActive", "--value", "0"}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "SET status=OK file_id=1000 field=m_IsActive old=1 new=0") {
+		t.Fatalf("unexpected stdout: %q", stdout.String())
+	}
+}
+
+func TestRunSetReturnsBlockedExitZero(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	source := filepath.Join("..", "..", "testdata", "fixtures", "set_monobehaviour_blocked.prefab")
+	target := filepath.Join(t.TempDir(), "set_monobehaviour_blocked.prefab")
+	input, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("read source: %v", err)
+	}
+	if err := os.WriteFile(target, input, 0o644); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+
+	exitCode := Run([]string{"prefab", "set", target, "--id", "11400000", "--field", "m_Enabled", "--value", "0"}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "SET status=BLOCKED code=MONOBEHAVIOUR_NATIVE_WRITE_BLOCKED") {
+		t.Fatalf("unexpected stdout: %q", stdout.String())
+	}
+}
+
 func TestWriteRoundtripReturnsErrorExitForFailedVerification(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	exitCode := writeRoundtrip(stdout, &core.RoundtripResult{
