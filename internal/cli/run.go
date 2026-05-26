@@ -35,7 +35,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	command := args[1]
-	if command != "blocks" && command != "graph" && command != "check" && command != "roundtrip" && command != "set" {
+	if command != "blocks" && command != "graph" && command != "check" && command != "roundtrip" && command != "set" && command != "remove-component" {
 		writeUsage(stderr)
 		return 2
 	}
@@ -45,6 +45,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 	if command == "set" {
 		return runSet(args, stdout, stderr)
+	}
+	if command == "remove-component" {
+		return runRemoveComponent(args, stdout, stderr)
 	}
 
 	if len(args) != 3 {
@@ -96,6 +99,7 @@ func writeUsage(stderr io.Writer) {
 	_, _ = fmt.Fprintln(stderr, "usage: uyaml <prefab|scene|asset|mat> <blocks|graph|check> <file>")
 	_, _ = fmt.Fprintln(stderr, "   or: uyaml <prefab|scene|asset|mat> roundtrip <file> --out <dest> [--mode lossless-block-copy]")
 	_, _ = fmt.Fprintln(stderr, "   or: uyaml <prefab|scene|asset|mat> set <file> --id <fileID> --field <top-level-field-name> --value <value>")
+	_, _ = fmt.Fprintln(stderr, "   or: uyaml prefab remove-component <file> --id <fileID> --experimental --write")
 }
 
 func writeGraph(stdout io.Writer, graphResult *core.Graph) int {
@@ -381,6 +385,92 @@ func writeSet(stdout io.Writer, result *core.SetResult) int {
 		result.BackupPath,
 	)
 
+	if result.Status == core.MutationStatusError {
+		return 1
+	}
+	return 0
+}
+
+func runRemoveComponent(args []string, stdout, stderr io.Writer) int {
+	if args[0] != "prefab" || len(args) != 7 {
+		writeUsage(stderr)
+		return 2
+	}
+
+	opts := core.RemoveComponentOptions{InputPath: args[2]}
+	idCount := 0
+	experimentalCount := 0
+	writeCount := 0
+
+	for i := 3; i < len(args); i++ {
+		switch args[i] {
+		case "--experimental":
+			experimentalCount++
+			if experimentalCount > 1 {
+				writeUsage(stderr)
+				return 2
+			}
+			opts.Experimental = true
+		case "--write":
+			writeCount++
+			if writeCount > 1 {
+				writeUsage(stderr)
+				return 2
+			}
+			opts.Write = true
+		case "--id":
+			if i+1 >= len(args) {
+				writeUsage(stderr)
+				return 2
+			}
+			idCount++
+			if idCount > 1 {
+				writeUsage(stderr)
+				return 2
+			}
+			fileID, err := strconv.ParseInt(args[i+1], 10, 64)
+			if err != nil {
+				writeUsage(stderr)
+				return 2
+			}
+			opts.FileID = fileID
+			i++
+		default:
+			writeUsage(stderr)
+			return 2
+		}
+	}
+
+	if idCount != 1 || !opts.Experimental || !opts.Write {
+		writeUsage(stderr)
+		return 2
+	}
+
+	result, err := mutate.RunRemoveComponent(opts)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "remove-component %s: %v\n", opts.InputPath, err)
+		return 1
+	}
+	return writeRemoveComponent(stdout, result)
+}
+
+func writeRemoveComponent(stdout io.Writer, result *core.RemoveComponentResult) int {
+	if result.Status == core.MutationStatusBlocked {
+		_, _ = fmt.Fprintf(stdout, "REMOVE_COMPONENT status=BLOCKED code=%s file_id=%d class_id=%d type=%s message=%q\n", result.Code, result.FileID, result.ClassID, result.TypeName, result.Message)
+		return 0
+	}
+
+	_, _ = fmt.Fprintf(stdout, "REMOVE_COMPONENT status=%s file_id=%d class_id=%d type=%s game_object=%d pre_check=%s temp_check=%s final_check=%s backup=%s\n",
+		result.Status,
+		result.FileID,
+		result.ClassID,
+		result.TypeName,
+		result.GameObject,
+		result.PreCheck,
+		result.TempCheck,
+		result.FinalCheck,
+		result.BackupPath,
+	)
 	if result.Status == core.MutationStatusError {
 		return 1
 	}

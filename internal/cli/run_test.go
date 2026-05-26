@@ -332,6 +332,49 @@ func TestRunSetRejectsMissingValueFlagWithoutMutating(t *testing.T) {
 	}
 }
 
+func TestRunRemoveComponentRejectsMissingExperimentalFlag(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "remove-component", "../../testdata/fixtures/remove_component_ok.prefab", "--id", "65000", "--write"}, stdout, stderr)
+
+	if exitCode != 2 {
+		t.Fatalf("expected usage exit code 2, got %d", exitCode)
+	}
+	if !strings.Contains(stderr.String(), "usage:") {
+		t.Fatalf("expected usage text, got %q", stderr.String())
+	}
+}
+
+func TestRunRemoveComponentPrintsExperimentalSuccessLine(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	target := copyCLIFixture(t, "remove_component_ok.prefab")
+
+	exitCode := Run([]string{"prefab", "remove-component", target, "--id", "65000", "--experimental", "--write"}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%q", exitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "REMOVE_COMPONENT status=EXPERIMENTAL file_id=65000 class_id=65 type=BoxCollider game_object=1000") {
+		t.Fatalf("unexpected stdout: %q", stdout.String())
+	}
+}
+
+func TestRunRemoveComponentPrintsBlockedMonoBehaviour(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "remove-component", "../../testdata/fixtures/remove_component_monobehaviour_blocked.prefab", "--id", "11400000", "--experimental", "--write"}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit 0 for blocked result, got %d", exitCode)
+	}
+	if !strings.Contains(stdout.String(), "status=BLOCKED") {
+		t.Fatalf("expected blocked output, got %q", stdout.String())
+	}
+}
+
 func TestWriteRoundtripReturnsErrorExitForFailedVerification(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	exitCode := writeRoundtrip(stdout, &core.RoundtripResult{
@@ -487,4 +530,19 @@ func loadGolden(t *testing.T, name string) string {
 		t.Fatalf("read golden %s: %v", name, err)
 	}
 	return string(data)
+}
+
+func copyCLIFixture(t *testing.T, name string) string {
+	t.Helper()
+
+	source := filepath.Join("..", "..", "testdata", "fixtures", name)
+	target := filepath.Join(t.TempDir(), name)
+	input, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("read source: %v", err)
+	}
+	if err := os.WriteFile(target, input, 0o644); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	return target
 }

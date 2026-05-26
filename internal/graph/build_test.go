@@ -178,6 +178,27 @@ func TestBuildMonoBehaviourFixtureKeepsExternalScriptMetadata(t *testing.T) {
 	}
 }
 
+func TestBuildSupportedBuiltInComponentFixtureDoesNotWarn(t *testing.T) {
+	parsed := parseGraphFixture(t, "remove_component_ok.prefab")
+
+	graph, err := Build(parsed)
+	if err != nil {
+		t.Fatalf("unexpected build error: %v", err)
+	}
+
+	if len(graph.Issues) != 0 {
+		t.Fatalf("expected no issues, got %v", graph.Issues)
+	}
+
+	component := graph.Components[65000]
+	if component == nil {
+		t.Fatalf("expected supported built-in component 65000")
+	}
+	if component.TypeName != "BoxCollider" || !component.HasGameObject || component.GameObject != 1000 {
+		t.Fatalf("unexpected supported component: %+v", component)
+	}
+}
+
 func TestBuildTabIndentFixtureKeepsPartialGraphAndIssue(t *testing.T) {
 	parsed := parseGraphFixture(t, "tab_indent.prefab")
 

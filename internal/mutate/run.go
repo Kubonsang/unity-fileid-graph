@@ -18,12 +18,21 @@ type fileOps struct {
 	Remove func(path string) error
 }
 
+type writePipelineResult struct {
+	TempCheck   string
+	FinalCheck  string
+	BackupPath  string
+	Restored    bool
+	RestoreFail bool
+}
+
+type writePipelineOptions struct {
+	RestoreOnFinalCheckError bool
+	CheckBytes               func([]byte) (string, error)
+}
+
 func RunSet(opts core.SetOptions) (*core.SetResult, error) {
-	ops := fileOps{
-		Rename: os.Rename,
-		Remove: os.Remove,
-	}
-	return runSetWithFileOps(opts, ops)
+	return runSetWithFileOps(opts, defaultFileOps())
 }
 
 func runSetWithFileOps(opts core.SetOptions, ops fileOps) (*core.SetResult, error) {
@@ -80,14 +89,45 @@ func runSetWithFileOps(opts core.SetOptions, ops fileOps) (*core.SetResult, erro
 	block.BodyRaw = edit.NewBody
 
 	output := roundtrip.AssembleLosslessCopy(parsed)
-	dir := filepath.Dir(opts.InputPath)
-	tempFile, err := os.CreateTemp(dir, filepath.Base(opts.InputPath)+".tmp-*")
+	pipeline, err := completeWritePipeline(opts.InputPath, output, ops, writePipelineOptions{
+		RestoreOnFinalCheckError: false,
+	})
 	if err != nil {
 		return nil, err
 	}
+	result.TempCheck = pipeline.TempCheck
+	result.FinalCheck = pipeline.FinalCheck
+	result.BackupPath = pipeline.BackupPath
+	if result.TempCheck == core.CheckStatusError {
+		result.Code = core.MutationCodeTempCheckError
+		result.RecomputeStatus()
+		return result, nil
+	}
+	if result.FinalCheck == core.CheckStatusError {
+		result.Code = core.MutationCodeFinalCheckError
+	}
+	result.RecomputeStatus()
+	return result, nil
+}
+
+func defaultFileOps() fileOps {
+	return fileOps{
+		Rename: os.Rename,
+		Remove: os.Remove,
+	}
+}
+
+func completeWritePipeline(inputPath string, output []byte, ops fileOps, options writePipelineOptions) (writePipelineResult, error) {
+	result := writePipelineResult{}
+
+	dir := filepath.Dir(inputPath)
+	tempFile, err := os.CreateTemp(dir, filepath.Base(inputPath)+".tmp-*")
+	if err != nil {
+		return result, err
+	}
 	tempPath := tempFile.Name()
 	if err := tempFile.Close(); err != nil {
-		return nil, err
+		return result, err
 	}
 	defer func() {
 		if tempPath != "" {
@@ -95,51 +135,67 @@ func runSetWithFileOps(opts core.SetOptions, ops fileOps) (*core.SetResult, erro
 		}
 	}()
 	if err := os.WriteFile(tempPath, output, 0o644); err != nil {
-		return nil, err
+		return result, err
 	}
 
-	reparsed, err := parser.Parse(output)
+	tempStatus, err := checkBytesWithOptions(output, options)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
-	tempGraph, err := graph.Build(reparsed)
-	if err != nil {
-		return nil, err
-	}
-	tempCheck := check.Run(tempGraph)
-	result.TempCheck = tempCheck.Status
-	if tempCheck.Status == core.CheckStatusError {
-		result.Code = core.MutationCodeTempCheckError
-		result.RecomputeStatus()
+	result.TempCheck = tempStatus
+	if tempStatus == core.CheckStatusError {
 		return result, nil
 	}
 
-	backupPath, err := replaceWithBackup(opts.InputPath, tempPath, ops)
+	backupPath, err := replaceWithBackup(inputPath, tempPath, ops)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 	result.BackupPath = backupPath
 	tempPath = ""
 
-	finalBytes, err := os.ReadFile(opts.InputPath)
+	finalBytes, err := os.ReadFile(inputPath)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
-	finalParsed, err := parser.Parse(finalBytes)
+	finalStatus, err := checkBytesWithOptions(finalBytes, options)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
-	finalGraph, err := graph.Build(finalParsed)
-	if err != nil {
-		return nil, err
+	result.FinalCheck = finalStatus
+	if finalStatus == core.CheckStatusError && options.RestoreOnFinalCheckError {
+		if restoreErr := restoreFromBackup(inputPath, backupPath, ops); restoreErr != nil {
+			result.RestoreFail = true
+		} else {
+			result.Restored = true
+		}
 	}
-	finalCheck := check.Run(finalGraph)
-	result.FinalCheck = finalCheck.Status
-	if finalCheck.Status == core.CheckStatusError {
-		result.Code = core.MutationCodeFinalCheckError
-	}
-	result.RecomputeStatus()
+
 	return result, nil
+}
+
+func checkBytesWithOptions(output []byte, options writePipelineOptions) (string, error) {
+	if options.CheckBytes != nil {
+		return options.CheckBytes(output)
+	}
+
+	reparsed, err := parser.Parse(output)
+	if err != nil {
+		return "", err
+	}
+	tempGraph, err := graph.Build(reparsed)
+	if err != nil {
+		return "", err
+	}
+	return check.Run(tempGraph).Status, nil
+}
+
+func restoreFromBackup(inputPath, backupPath string, ops fileOps) error {
+	if err := ops.Rename(backupPath, inputPath); err == nil {
+		return nil
+	}
+	_ = ops.Remove(inputPath)
+	return ops.Rename(backupPath, inputPath)
 }
 
 func replaceWithBackup(inputPath, tempPath string, ops fileOps) (string, error) {

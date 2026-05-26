@@ -1,0 +1,25 @@
+--- !u!1 &1000
+GameObject:
+  m_Name: OwnerMismatch
+  m_Component:
+  - component: {fileID: 4001}
+  - component: {fileID: 65000}
+--- !u!4 &4001
+Transform:
+  m_GameObject: {fileID: 1000}
+  m_Father: {fileID: 0}
+  m_Children: []
+--- !u!1 &9999
+GameObject:
+  m_Name: WrongOwner
+  m_Component:
+  - component: {fileID: 4000}
+--- !u!4 &4000
+Transform:
+  m_GameObject: {fileID: 9999}
+  m_Father: {fileID: 0}
+  m_Children: []
+--- !u!65 &65000
+BoxCollider:
+  m_GameObject: {fileID: 9999}
+  m_Enabled: 1
