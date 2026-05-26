@@ -62,6 +62,9 @@ func validateMissingComponentBlocks(graphResult *core.Graph, result *core.CheckR
 			if component, ok := graphResult.Components[componentID]; ok && component != nil {
 				continue
 			}
+			if hasObjectBlock(graphResult, componentID) {
+				continue
+			}
 			result.Errors = append(result.Errors, core.CheckFinding{
 				Code:         core.CheckMissingComponentBlock,
 				GameObjectID: gameObjectID,
@@ -137,12 +140,20 @@ func validateTransformParentChildRelationships(graphResult *core.Graph, result *
 		}
 
 		if transform.Father != 0 {
-			if _, ok := graphResult.Transforms[transform.Father]; !ok {
+			parentTransform, ok := graphResult.Transforms[transform.Father]
+			if !ok || parentTransform == nil {
 				result.Errors = append(result.Errors, core.CheckFinding{
 					Code:        core.CheckTransformParentChildMismatch,
 					TransformID: transformID,
 					ParentID:    transform.Father,
 					Reason:      "missing_parent_transform",
+				})
+			} else if !hasGraphIssueForFile(graphResult, transform.Father) && !containsInt64(parentTransform.Children, transformID) {
+				result.Errors = append(result.Errors, core.CheckFinding{
+					Code:        core.CheckTransformParentChildMismatch,
+					TransformID: transformID,
+					ParentID:    transform.Father,
+					Reason:      "missing_from_parent_children",
 				})
 			}
 		}
@@ -235,6 +246,14 @@ func hasGraphIssueForFile(graphResult *core.Graph, fileID int64) bool {
 		}
 	}
 	return false
+}
+
+func hasObjectBlock(graphResult *core.Graph, fileID int64) bool {
+	return len(graphResult.ObjectsByID[fileID]) > 0
+}
+
+func containsInt64(values []int64, want int64) bool {
+	return slices.Contains(values, want)
 }
 
 func gameObjectHasRelatedIssues(graphResult *core.Graph, gameObjectID int64) bool {

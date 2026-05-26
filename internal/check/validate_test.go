@@ -346,6 +346,65 @@ func TestRunSkipsParentChildMismatchWhenChildTransformHasGraphIssue(t *testing.T
 	}
 }
 
+func TestRunDoesNotTreatUnsupportedPresentComponentBlockAsMissing(t *testing.T) {
+	graphResult := &core.Graph{
+		Blocks: []*core.Block{
+			{FileID: 1000, ClassID: 1},
+			{FileID: 4000, ClassID: 4},
+			{FileID: 23000, ClassID: 23},
+		},
+		BlocksByID: map[int64][]*core.Block{
+			1000: {{FileID: 1000, ClassID: 1}},
+			4000: {{FileID: 4000, ClassID: 4}},
+			23000: {{FileID: 23000, ClassID: 23}},
+		},
+		ObjectsByID: map[int64][]*core.UnityObject{
+			1000: {{FileID: 1000, ClassID: 1, TypeName: "GameObject"}},
+			4000: {{FileID: 4000, ClassID: 4, TypeName: "Transform"}},
+			23000: {{FileID: 23000, ClassID: 23, TypeName: "MeshRenderer"}},
+		},
+		GameObjects: map[int64]*core.GameObjectNode{
+			1000: {FileID: 1000, Name: "Player", Components: []int64{23000, 4000}, Transform: 4000},
+		},
+		Components: map[int64]*core.ComponentNode{
+			4000: {FileID: 4000, ClassID: 4, TypeName: "Transform", HasGameObject: true, GameObject: 1000},
+		},
+		Transforms: map[int64]*core.TransformNode{
+			4000: {FileID: 4000, GameObject: 1000},
+		},
+	}
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusOK {
+		t.Fatalf("expected status %q, got %q (errors=%v warnings=%v)", core.CheckStatusOK, result.Status, result.Errors, result.Warnings)
+	}
+	if len(result.Errors) != 0 {
+		t.Fatalf("expected no errors for unsupported-but-present component block, got %v", result.Errors)
+	}
+}
+
+func TestRunDetectsMissingReverseParentChildLink(t *testing.T) {
+	graphResult := &core.Graph{
+		Transforms: map[int64]*core.TransformNode{
+			4000: {FileID: 4000, Children: []int64{}},
+			4001: {FileID: 4001, Father: 4000},
+		},
+	}
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusError {
+		t.Fatalf("expected status %q, got %q", core.CheckStatusError, result.Status)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(result.Errors))
+	}
+	if result.Errors[0].Code != core.CheckTransformParentChildMismatch || result.Errors[0].TransformID != 4001 || result.Errors[0].ParentID != 4000 || result.Errors[0].Reason != "missing_from_parent_children" {
+		t.Fatalf("unexpected error: %+v", result.Errors[0])
+	}
+}
+
 func buildFixtureGraph(t *testing.T, name string) *core.Graph {
 	t.Helper()
 
