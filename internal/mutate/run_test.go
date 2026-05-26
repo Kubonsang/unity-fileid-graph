@@ -220,3 +220,56 @@ func TestReplaceWithBackupRestoresOriginalOnRenameFailure(t *testing.T) {
 		t.Fatalf("expected original content to be restored, got %q", string(restored))
 	}
 }
+
+func TestCompleteWritePipelineMarksRestoreFailedWhenBackupRestoreFails(t *testing.T) {
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "sample.prefab")
+
+	original := []byte("--- !u!1 &1000\nGameObject:\n  m_Name: Original\n")
+	mutated := []byte("--- !u!1 &1000\nGameObject:\n  m_Name: Mutated\n")
+	corrupted := []byte("--- !u!1 &1000\nGameObject:\n  m_Name: Corrupted\n")
+
+	if err := os.WriteFile(target, original, 0o644); err != nil {
+		t.Fatalf("write original: %v", err)
+	}
+
+	ops := fileOps{
+		Rename: func(oldpath, newpath string) error {
+			if strings.HasSuffix(oldpath, ".bak") || strings.Contains(oldpath, ".bak.") {
+				return errors.New("restore failed")
+			}
+			return os.Rename(oldpath, newpath)
+		},
+		Remove: os.Remove,
+	}
+
+	pipeline, err := completeWritePipeline(target, mutated, ops, writePipelineOptions{
+		RestoreOnFinalCheckError: true,
+		CheckBytes: func(phase writePipelineCheckPhase, got []byte) (string, error) {
+			switch phase {
+			case writePipelineCheckTemp:
+				return core.CheckStatusOK, nil
+			case writePipelineCheckFinal:
+				if string(got) != string(corrupted) {
+					t.Fatalf("expected corrupted final bytes")
+				}
+				return core.CheckStatusError, nil
+			default:
+				t.Fatalf("unexpected phase: %q", phase)
+				return "", nil
+			}
+		},
+		AfterReplace: func(path string) error {
+			return os.WriteFile(path, corrupted, 0o644)
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if pipeline.Restored {
+		t.Fatalf("expected restored=false")
+	}
+	if !pipeline.RestoreFail {
+		t.Fatalf("expected restore_failed=true")
+	}
+}
