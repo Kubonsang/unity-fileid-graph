@@ -16,7 +16,7 @@ type headerMeta struct {
 	IsStripped bool
 }
 
-var headerPattern = regexp.MustCompile(`^--- !u!(\d+) &(\d+)( stripped)?(?:\r?\n)$`)
+var headerPattern = regexp.MustCompile(`^--- !u!(\d+) &(-?\d+)( stripped)?(?:\r?\n)$`)
 
 func parseHeader(header string) (headerMeta, error) {
 	matches := headerPattern.FindStringSubmatch(header)

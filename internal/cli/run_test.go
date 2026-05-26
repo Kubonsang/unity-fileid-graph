@@ -78,6 +78,23 @@ func TestRunMatchesGoldenStrippedHeader(t *testing.T) {
 	}
 }
 
+func TestRunMatchesGoldenNegativeHeader(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "blocks", "../../testdata/fixtures/negative_header.prefab"}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d: %s", exitCode, stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+	if got := stdout.String(); got != loadGolden(t, "negative_header.blocks.txt") {
+		t.Fatalf("blocks golden mismatch:\nwant %q\ngot  %q", loadGolden(t, "negative_header.blocks.txt"), got)
+	}
+}
+
 func TestRunReturnsReadErrorForUnreadableInput(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
