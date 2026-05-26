@@ -59,6 +59,15 @@ Parser is infrastructure. Safety planner is the product.
 - Preserves the transactional write pipeline from `v0.5`
 - Does not implement add-child, reparent, or generic structural editing
 
+## v0.8 Scope
+
+- Accepts negative top-level Unity header `fileID` values
+- Hardens `restore_failed=true` coverage for the shared write pipeline
+- Keeps `remove-component` prefab-only
+- Keeps the built-in remove allowlist limited to `BoxCollider` and `Rigidbody`
+- Adds dependency-aware blocked reasons for `MeshRenderer` and `MeshFilter`
+- Adds richer `REMOVE_COMPONENT` error output when restore metadata is present
+
 ## Usage
 
 ```bash
