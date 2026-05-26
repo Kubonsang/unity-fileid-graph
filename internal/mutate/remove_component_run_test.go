@@ -70,6 +70,48 @@ func TestRunRemoveComponentBlocksOwnerMismatch(t *testing.T) {
 	}
 }
 
+func TestRunRemoveComponentBlocksMeshRendererWithDependencyMessage(t *testing.T) {
+	result, err := RunRemoveComponent(core.RemoveComponentOptions{
+		InputPath:    fixturePath("remove_component_meshrenderer_blocked.prefab"),
+		FileID:       23000,
+		Experimental: true,
+		Write:        true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != core.MutationStatusBlocked {
+		t.Fatalf("expected BLOCKED, got %q", result.Status)
+	}
+	if result.Code != core.MutationCodeUnsupportedComponentClass {
+		t.Fatalf("expected UNSUPPORTED_COMPONENT_CLASS, got %q", result.Code)
+	}
+	if !strings.Contains(result.Message, "MeshFilter") {
+		t.Fatalf("expected sibling dependency message, got %q", result.Message)
+	}
+}
+
+func TestRunRemoveComponentBlocksMeshFilterWithDependencyMessage(t *testing.T) {
+	result, err := RunRemoveComponent(core.RemoveComponentOptions{
+		InputPath:    fixturePath("remove_component_meshrenderer_blocked.prefab"),
+		FileID:       33000,
+		Experimental: true,
+		Write:        true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != core.MutationStatusBlocked {
+		t.Fatalf("expected BLOCKED, got %q", result.Status)
+	}
+	if result.Code != core.MutationCodeUnsupportedComponentClass {
+		t.Fatalf("expected UNSUPPORTED_COMPONENT_CLASS, got %q", result.Code)
+	}
+	if !strings.Contains(result.Message, "MeshRenderer") {
+		t.Fatalf("expected sibling dependency message, got %q", result.Message)
+	}
+}
+
 func TestRunRemoveComponentBlocksDanglingLocalReference(t *testing.T) {
 	target := copyFixture(t, "remove_component_warn.prefab")
 	input, err := os.ReadFile(target)

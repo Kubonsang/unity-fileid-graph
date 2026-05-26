@@ -78,6 +78,8 @@ The `remove-component` command is intentionally experimental and allowlist-only 
 It is limited to the `prefab` namespace, and `WARN` is reflected through the `pre_check`, `temp_check`, and `final_check` fields rather than a top-level `WARN` status.
 Use it on version-controlled files, review the diff, and treat blocked results as expected safety outcomes rather than command failures.
 
+`v0.8` keeps `remove-component` prefab-only and does not expand the built-in allowlist yet. `MeshRenderer` and `MeshFilter` remain explicitly blocked with dependency-aware messages because sibling-pair safety rules are not implemented.
+
 Example warning output:
 
 ```text

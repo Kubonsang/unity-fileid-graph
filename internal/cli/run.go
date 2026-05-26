@@ -459,7 +459,37 @@ func writeRemoveComponent(stdout io.Writer, result *core.RemoveComponentResult) 
 		_, _ = fmt.Fprintf(stdout, "REMOVE_COMPONENT status=BLOCKED code=%s file_id=%d class_id=%d type=%s message=%q\n", result.Code, result.FileID, result.ClassID, result.TypeName, result.Message)
 		return 0
 	}
-
+	if result.Status == core.MutationStatusError {
+		if result.Message != "" {
+			_, _ = fmt.Fprintf(stdout, "REMOVE_COMPONENT status=%s code=%s file_id=%d class_id=%d type=%s game_object=%d pre_check=%s temp_check=%s final_check=%s backup=%s message=%q\n",
+				result.Status,
+				result.Code,
+				result.FileID,
+				result.ClassID,
+				result.TypeName,
+				result.GameObject,
+				result.PreCheck,
+				result.TempCheck,
+				result.FinalCheck,
+				result.BackupPath,
+				result.Message,
+			)
+		} else {
+			_, _ = fmt.Fprintf(stdout, "REMOVE_COMPONENT status=%s code=%s file_id=%d class_id=%d type=%s game_object=%d pre_check=%s temp_check=%s final_check=%s backup=%s\n",
+				result.Status,
+				result.Code,
+				result.FileID,
+				result.ClassID,
+				result.TypeName,
+				result.GameObject,
+				result.PreCheck,
+				result.TempCheck,
+				result.FinalCheck,
+				result.BackupPath,
+			)
+		}
+		return 1
+	}
 	_, _ = fmt.Fprintf(stdout, "REMOVE_COMPONENT status=%s file_id=%d class_id=%d type=%s game_object=%d pre_check=%s temp_check=%s final_check=%s backup=%s\n",
 		result.Status,
 		result.FileID,
@@ -471,9 +501,6 @@ func writeRemoveComponent(stdout io.Writer, result *core.RemoveComponentResult) 
 		result.FinalCheck,
 		result.BackupPath,
 	)
-	if result.Status == core.MutationStatusError {
-		return 1
-	}
 	return 0
 }
 

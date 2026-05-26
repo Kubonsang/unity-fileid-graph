@@ -392,6 +392,33 @@ func TestRunRemoveComponentPrintsBlockedMonoBehaviour(t *testing.T) {
 	}
 }
 
+func TestWriteRemoveComponentPrintsMessageOnErrorStatus(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	exitCode := writeRemoveComponent(stdout, &core.RemoveComponentResult{
+		Status:     core.MutationStatusError,
+		Code:       core.MutationCodeFinalCheckError,
+		FileID:     65000,
+		ClassID:    65,
+		TypeName:   "BoxCollider",
+		GameObject: 1000,
+		PreCheck:   core.CheckStatusOK,
+		TempCheck:  core.CheckStatusOK,
+		FinalCheck: core.CheckStatusError,
+		BackupPath: "/tmp/remove_component_ok.prefab.bak",
+		Message:    "restore_failed=true",
+	})
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
+	}
+	if !strings.Contains(stdout.String(), "code=FINAL_CHECK_ERROR") {
+		t.Fatalf("expected code field in output, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), `message="restore_failed=true"`) {
+		t.Fatalf("expected message field in output, got %q", stdout.String())
+	}
+}
+
 func TestWriteRoundtripReturnsErrorExitForFailedVerification(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	exitCode := writeRoundtrip(stdout, &core.RoundtripResult{
