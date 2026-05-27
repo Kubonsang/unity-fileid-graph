@@ -285,7 +285,6 @@ func TestRunRemoveComponentHappyPathStillSucceedsWithoutHooks(t *testing.T) {
 		t.Fatalf("expected final-check OK, got %q", result.FinalCheck)
 	}
 }
-
 func TestRunRemoveComponentReportsRestoreFailedOnFinalCheckError(t *testing.T) {
 	target := copyFixture(t, "remove_component_ok.prefab")
 	corrupted, err := os.ReadFile(fixturePath("remove_component_final_check_corrupt.prefab"))
@@ -327,7 +326,6 @@ func TestRunRemoveComponentReportsRestoreFailedOnFinalCheckError(t *testing.T) {
 		t.Fatalf("expected restore_failed=true message, got %q", result.Message)
 	}
 }
-
 func fixturePath(name string) string {
 	return filepath.Join("..", "..", "testdata", "fixtures", name)
 }
