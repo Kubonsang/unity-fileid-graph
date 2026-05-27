@@ -26,9 +26,17 @@ type writePipelineResult struct {
 	RestoreFail bool
 }
 
+type writePipelineCheckPhase string
+
+const (
+	writePipelineCheckTemp  writePipelineCheckPhase = "temp"
+	writePipelineCheckFinal writePipelineCheckPhase = "final"
+)
+
 type writePipelineOptions struct {
 	RestoreOnFinalCheckError bool
-	CheckBytes               func([]byte) (string, error)
+	CheckBytes               func(phase writePipelineCheckPhase, bytes []byte) (string, error)
+	AfterReplace             func(path string) error
 }
 
 func RunSet(opts core.SetOptions) (*core.SetResult, error) {
@@ -138,7 +146,7 @@ func completeWritePipeline(inputPath string, output []byte, ops fileOps, options
 		return result, err
 	}
 
-	tempStatus, err := checkBytesWithOptions(output, options)
+	tempStatus, err := checkBytesWithOptions(writePipelineCheckTemp, output, options)
 	if err != nil {
 		return result, err
 	}
@@ -154,11 +162,17 @@ func completeWritePipeline(inputPath string, output []byte, ops fileOps, options
 	result.BackupPath = backupPath
 	tempPath = ""
 
+	if options.AfterReplace != nil {
+		if err := options.AfterReplace(inputPath); err != nil {
+			return result, err
+		}
+	}
+
 	finalBytes, err := os.ReadFile(inputPath)
 	if err != nil {
 		return result, err
 	}
-	finalStatus, err := checkBytesWithOptions(finalBytes, options)
+	finalStatus, err := checkBytesWithOptions(writePipelineCheckFinal, finalBytes, options)
 	if err != nil {
 		return result, err
 	}
@@ -174,9 +188,9 @@ func completeWritePipeline(inputPath string, output []byte, ops fileOps, options
 	return result, nil
 }
 
-func checkBytesWithOptions(output []byte, options writePipelineOptions) (string, error) {
+func checkBytesWithOptions(phase writePipelineCheckPhase, output []byte, options writePipelineOptions) (string, error) {
 	if options.CheckBytes != nil {
-		return options.CheckBytes(output)
+		return options.CheckBytes(phase, output)
 	}
 
 	reparsed, err := parser.Parse(output)
