@@ -59,6 +59,15 @@ Parser is infrastructure. Safety planner is the product.
 - Preserves the transactional write pipeline from `v0.5`
 - Does not implement add-child, reparent, or generic structural editing
 
+## v0.8 Scope
+
+- Accepts negative top-level Unity header `fileID` values
+- Hardens `restore_failed=true` coverage for the shared write pipeline
+- Keeps `remove-component` prefab-only
+- Keeps the built-in remove allowlist limited to `BoxCollider` and `Rigidbody`
+- Adds dependency-aware blocked reasons for `MeshRenderer` and `MeshFilter`
+- Adds richer `REMOVE_COMPONENT` error output when restore metadata is present
+
 ## Usage
 
 ```bash
@@ -77,6 +86,10 @@ Use it on version-controlled files and review the diff.
 The `remove-component` command is intentionally experimental and allowlist-only in `v0.6`.
 It is limited to the `prefab` namespace, and `WARN` is reflected through the `pre_check`, `temp_check`, and `final_check` fields rather than a top-level `WARN` status.
 Use it on version-controlled files, review the diff, and treat blocked results as expected safety outcomes rather than command failures.
+
+`v0.8` keeps `remove-component` prefab-only and does not expand the built-in allowlist yet. `MeshRenderer` and `MeshFilter` remain explicitly blocked with dependency-aware messages because sibling-pair safety rules are not implemented.
+
+Scene-file structural mutation was evaluated in `v0.8` and remains out of scope. `remove-component` stays limited to `prefab` because scene-scale object graphs and cross-object blast radius need a separate safety design before write support is allowed.
 
 Example warning output:
 

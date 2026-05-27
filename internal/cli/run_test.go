@@ -78,6 +78,23 @@ func TestRunMatchesGoldenStrippedHeader(t *testing.T) {
 	}
 }
 
+func TestRunMatchesGoldenNegativeHeader(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "blocks", "../../testdata/fixtures/negative_header.prefab"}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d: %s", exitCode, stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+	if got := stdout.String(); got != loadGolden(t, "negative_header.blocks.txt") {
+		t.Fatalf("blocks golden mismatch:\nwant %q\ngot  %q", loadGolden(t, "negative_header.blocks.txt"), got)
+	}
+}
+
 func TestRunReturnsReadErrorForUnreadableInput(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -346,6 +363,20 @@ func TestRunRemoveComponentRejectsMissingExperimentalFlag(t *testing.T) {
 	}
 }
 
+func TestRunRemoveComponentRejectsSceneNamespace(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"scene", "remove-component", "../../testdata/fixtures/remove_component_ok.prefab", "--id", "65000", "--experimental", "--write"}, stdout, stderr)
+
+	if exitCode != 2 {
+		t.Fatalf("expected exit code 2, got %d", exitCode)
+	}
+	if !strings.Contains(stderr.String(), "uyaml prefab remove-component") {
+		t.Fatalf("expected prefab-only usage guidance, got %q", stderr.String())
+	}
+}
+
 func TestRunRemoveComponentPrintsExperimentalSuccessLine(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -372,6 +403,33 @@ func TestRunRemoveComponentPrintsBlockedMonoBehaviour(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "status=BLOCKED") {
 		t.Fatalf("expected blocked output, got %q", stdout.String())
+	}
+}
+
+func TestWriteRemoveComponentPrintsMessageOnErrorStatus(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	exitCode := writeRemoveComponent(stdout, &core.RemoveComponentResult{
+		Status:     core.MutationStatusError,
+		Code:       core.MutationCodeFinalCheckError,
+		FileID:     65000,
+		ClassID:    65,
+		TypeName:   "BoxCollider",
+		GameObject: 1000,
+		PreCheck:   core.CheckStatusOK,
+		TempCheck:  core.CheckStatusOK,
+		FinalCheck: core.CheckStatusError,
+		BackupPath: "/tmp/remove_component_ok.prefab.bak",
+		Message:    "restore_failed=true",
+	})
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
+	}
+	if !strings.Contains(stdout.String(), "code=FINAL_CHECK_ERROR") {
+		t.Fatalf("expected code field in output, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), `message="restore_failed=true"`) {
+		t.Fatalf("expected message field in output, got %q", stdout.String())
 	}
 }
 

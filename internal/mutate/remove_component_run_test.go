@@ -1,6 +1,7 @@
 package mutate
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -66,6 +67,48 @@ func TestRunRemoveComponentBlocksOwnerMismatch(t *testing.T) {
 	}
 	if result.Status != core.MutationStatusBlocked || result.Code != core.MutationCodeComponentOwnerMismatch {
 		t.Fatalf("expected owner mismatch blocked result, got status=%q code=%q", result.Status, result.Code)
+	}
+}
+
+func TestRunRemoveComponentBlocksMeshRendererWithDependencyMessage(t *testing.T) {
+	result, err := RunRemoveComponent(core.RemoveComponentOptions{
+		InputPath:    fixturePath("remove_component_meshrenderer_blocked.prefab"),
+		FileID:       23000,
+		Experimental: true,
+		Write:        true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != core.MutationStatusBlocked {
+		t.Fatalf("expected BLOCKED, got %q", result.Status)
+	}
+	if result.Code != core.MutationCodeUnsupportedComponentClass {
+		t.Fatalf("expected UNSUPPORTED_COMPONENT_CLASS, got %q", result.Code)
+	}
+	if !strings.Contains(result.Message, "MeshFilter") {
+		t.Fatalf("expected sibling dependency message, got %q", result.Message)
+	}
+}
+
+func TestRunRemoveComponentBlocksMeshFilterWithDependencyMessage(t *testing.T) {
+	result, err := RunRemoveComponent(core.RemoveComponentOptions{
+		InputPath:    fixturePath("remove_component_meshrenderer_blocked.prefab"),
+		FileID:       33000,
+		Experimental: true,
+		Write:        true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != core.MutationStatusBlocked {
+		t.Fatalf("expected BLOCKED, got %q", result.Status)
+	}
+	if result.Code != core.MutationCodeUnsupportedComponentClass {
+		t.Fatalf("expected UNSUPPORTED_COMPONENT_CLASS, got %q", result.Code)
+	}
+	if !strings.Contains(result.Message, "MeshRenderer") {
+		t.Fatalf("expected sibling dependency message, got %q", result.Message)
 	}
 }
 
@@ -242,7 +285,47 @@ func TestRunRemoveComponentHappyPathStillSucceedsWithoutHooks(t *testing.T) {
 		t.Fatalf("expected final-check OK, got %q", result.FinalCheck)
 	}
 }
+func TestRunRemoveComponentReportsRestoreFailedOnFinalCheckError(t *testing.T) {
+	target := copyFixture(t, "remove_component_ok.prefab")
+	corrupted, err := os.ReadFile(fixturePath("remove_component_final_check_corrupt.prefab"))
+	if err != nil {
+		t.Fatalf("read corrupt fixture: %v", err)
+	}
 
+	ops := fileOps{
+		Rename: func(oldpath, newpath string) error {
+			if strings.HasSuffix(oldpath, ".bak") || strings.Contains(oldpath, ".bak.") {
+				return errors.New("restore failed")
+			}
+			return os.Rename(oldpath, newpath)
+		},
+		Remove: os.Remove,
+	}
+
+	result, err := runRemoveComponentWithDeps(core.RemoveComponentOptions{
+		InputPath:    target,
+		FileID:       65000,
+		Experimental: true,
+		Write:        true,
+	}, ops, writePipelineOptions{
+		RestoreOnFinalCheckError: true,
+		AfterReplace: func(path string) error {
+			return os.WriteFile(path, corrupted, 0o644)
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != core.MutationStatusError {
+		t.Fatalf("expected ERROR, got %q", result.Status)
+	}
+	if result.Code != core.MutationCodeFinalCheckError {
+		t.Fatalf("expected FINAL_CHECK_ERROR, got %q", result.Code)
+	}
+	if result.Message != "restore_failed=true" {
+		t.Fatalf("expected restore_failed=true message, got %q", result.Message)
+	}
+}
 func fixturePath(name string) string {
 	return filepath.Join("..", "..", "testdata", "fixtures", name)
 }
