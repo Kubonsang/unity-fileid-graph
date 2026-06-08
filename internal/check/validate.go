@@ -63,6 +63,15 @@ func validateMissingComponentBlocks(graphResult *core.Graph, result *core.CheckR
 				continue
 			}
 			if hasObjectBlock(graphResult, componentID) {
+				if hasComponentObjectBlock(graphResult, componentID) {
+					continue
+				}
+				result.Errors = append(result.Errors, core.CheckFinding{
+					Code:         core.CheckMissingComponentBlock,
+					GameObjectID: gameObjectID,
+					ComponentID:  componentID,
+					Reason:       "referenced_block_is_not_component",
+				})
 				continue
 			}
 			result.Errors = append(result.Errors, core.CheckFinding{
@@ -250,6 +259,18 @@ func hasGraphIssueForFile(graphResult *core.Graph, fileID int64) bool {
 
 func hasObjectBlock(graphResult *core.Graph, fileID int64) bool {
 	return len(graphResult.ObjectsByID[fileID]) > 0
+}
+
+func hasComponentObjectBlock(graphResult *core.Graph, fileID int64) bool {
+	for _, object := range graphResult.ObjectsByID[fileID] {
+		if object == nil {
+			continue
+		}
+		if object.ClassID != 1 {
+			return true
+		}
+	}
+	return false
 }
 
 func containsInt64(values []int64, want int64) bool {
