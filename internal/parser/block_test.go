@@ -45,19 +45,26 @@ func TestParseHeaderParsesStrippedHeader(t *testing.T) {
 	}
 }
 
+func TestParseHeaderParsesNegativeFileID(t *testing.T) {
+	header := "--- !u!1 &-4902384920\n"
+
+	meta, err := parseHeader(header)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if meta.ClassID != 1 {
+		t.Fatalf("expected class id 1, got %d", meta.ClassID)
+	}
+	if meta.FileID != -4902384920 {
+		t.Fatalf("expected file id -4902384920, got %d", meta.FileID)
+	}
+}
+
 func TestParseHeaderRejectsInvalidHeader(t *testing.T) {
 	header := "--- not-unity-header\n"
 
 	if _, err := parseHeader(header); err == nil {
 		t.Fatalf("expected error for invalid header")
-	}
-}
-
-func TestParseHeaderRejectsSignedFileIDSyntax(t *testing.T) {
-	header := "--- !u!114 &-123\n"
-
-	if _, err := parseHeader(header); err == nil {
-		t.Fatalf("expected error for signed file id syntax")
 	}
 }
 

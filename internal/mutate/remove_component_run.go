@@ -75,9 +75,19 @@ func runRemoveComponentWithDeps(opts core.RemoveComponentOptions, ops fileOps, p
 
 	typeName, ok := removableComponentTypes[targetBlock.ClassID]
 	if !ok {
+		typeName = "UNKNOWN"
+		message := "native remove-component is limited to the v0.6 built-in allowlist"
+		switch targetBlock.ClassID {
+		case 23:
+			typeName = "MeshRenderer"
+			message = "MeshRenderer removal stays blocked because sibling MeshFilter dependency handling is not implemented"
+		case 33:
+			typeName = "MeshFilter"
+			message = "MeshFilter removal stays blocked because sibling MeshRenderer dependency handling is not implemented"
+		}
 		result.Code = core.MutationCodeUnsupportedComponentClass
-		result.TypeName = "UNKNOWN"
-		result.MarkBlocked("native remove-component is limited to the v0.6 built-in allowlist")
+		result.TypeName = typeName
+		result.MarkBlocked(message)
 		return result, nil
 	}
 	result.TypeName = typeName
