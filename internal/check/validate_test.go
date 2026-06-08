@@ -137,6 +137,31 @@ func TestRunDetectsComponentReferenceToNonComponentBlock(t *testing.T) {
 	}
 }
 
+func TestRunDetectsComponentReferenceToMaterialBlock(t *testing.T) {
+	graphResult := buildGraphFromString(t,
+		"--- !u!1 &1000\n"+
+			"GameObject:\n"+
+			"  m_Component:\n"+
+			"  - component: {fileID: 2100000}\n"+
+			"  m_Name: Root\n"+
+			"--- !u!21 &2100000\n"+
+			"Material:\n"+
+			"  m_Name: NotAComponent\n",
+	)
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusError {
+		t.Fatalf("expected status %q, got %q", core.CheckStatusError, result.Status)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("expected 1 error, got %d: %+v", len(result.Errors), result.Errors)
+	}
+	if result.Errors[0].Code != core.CheckMissingComponentBlock || result.Errors[0].GameObjectID != 1000 || result.Errors[0].ComponentID != 2100000 || result.Errors[0].Reason != "referenced_block_is_not_component" {
+		t.Fatalf("unexpected error: %+v", result.Errors[0])
+	}
+}
+
 func TestRunDetectsMissingGameObjectBlock(t *testing.T) {
 	graphResult := buildFixtureGraph(t, "check_missing_gameobject.prefab")
 

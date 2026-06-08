@@ -373,8 +373,11 @@ func writeSet(stdout io.Writer, result *core.SetResult) int {
 		return 0
 	}
 
-	_, _ = fmt.Fprintf(stdout, "SET status=%s file_id=%d field=%s old=%s new=%s pre_check=%s temp_check=%s final_check=%s backup=%s\n",
-		result.Status,
+	_, _ = fmt.Fprintf(stdout, "SET status=%s", result.Status)
+	if result.Status == core.MutationStatusError {
+		_, _ = fmt.Fprintf(stdout, " code=%s", result.Code)
+	}
+	_, _ = fmt.Fprintf(stdout, " file_id=%d field=%s old=%s new=%s pre_check=%s temp_check=%s final_check=%s backup=%s",
 		result.FileID,
 		result.Field,
 		result.OldValue,
@@ -384,6 +387,10 @@ func writeSet(stdout io.Writer, result *core.SetResult) int {
 		result.FinalCheck,
 		result.BackupPath,
 	)
+	if result.Status == core.MutationStatusError && result.Message != "" {
+		_, _ = fmt.Fprintf(stdout, " message=%q", result.Message)
+	}
+	_, _ = fmt.Fprintln(stdout)
 
 	if result.Status == core.MutationStatusError {
 		return 1

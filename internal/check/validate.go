@@ -266,11 +266,20 @@ func hasComponentObjectBlock(graphResult *core.Graph, fileID int64) bool {
 		if object == nil {
 			continue
 		}
-		if object.ClassID != 1 {
+		if isKnownComponentClassID(object.ClassID) {
 			return true
 		}
 	}
 	return false
+}
+
+func isKnownComponentClassID(classID int) bool {
+	switch classID {
+	case 4, 23, 33, 54, 65, 114:
+		return true
+	default:
+		return false
+	}
 }
 
 func containsInt64(values []int64, want int64) bool {
