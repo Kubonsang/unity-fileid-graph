@@ -73,7 +73,7 @@ Parser is infrastructure. Safety planner is the product.
 - Adds `check --json` as the first stable machine-readable safety-kernel output.
 - Adds read-only `refs` and `refs --json` for targeted Unity PPtr/GUID evidence.
 - `refs` includes local fileID-only references and external GUID-backed references.
-- `refs` supports inline PPtr values only in v0.9a; multiline PPtr values are deferred.
+- `refs` supports inline PPtr values only in v0.9a; malformed inline values may produce warning-only extraction issues, while multiline PPtr values are deferred.
 - `refs` field paths are best-effort evidence labels and are not a full YAML AST path contract.
 - `refs` is read-only evidence extraction; `status=WARN` means warning-only extraction issues and still exits `0`.
 - `refs` may include `file_id=0` null PPtr values outside skipped graph-structural fields; consumers should treat them as null evidence, not object edges.
@@ -116,6 +116,14 @@ Example warning output:
 ```text
 WARN code=TAB_INDENT file_id=1000 message="tab indentation is unsupported in v0.2 field scanning"
 ```
+
+Example refs warning output:
+
+```text
+WARN code=UNKNOWN_FIELD_SHAPE file_id=11400000 message="unsupported PPtr fileID"
+```
+
+The same condition appears as `status: "WARN"` in `refs --json` and still exits `0`.
 
 Example integrity error output:
 
