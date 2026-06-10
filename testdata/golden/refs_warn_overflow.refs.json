@@ -1,0 +1,19 @@
+{
+  "status": "WARN",
+  "namespace": "prefab",
+  "command": "refs",
+  "file": "../../testdata/fixtures/refs_warn_overflow.prefab",
+  "summary": {
+    "references": 0,
+    "warnings": 1
+  },
+  "references": [],
+  "issues": [
+    {
+      "severity": "WARN",
+      "code": "UNKNOWN_FIELD_SHAPE",
+      "file_id": 11400000,
+      "message": "unsupported PPtr fileID"
+    }
+  ]
+}

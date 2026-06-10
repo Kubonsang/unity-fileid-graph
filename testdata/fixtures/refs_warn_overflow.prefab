@@ -1,0 +1,4 @@
+--- !u!114 &11400000
+MonoBehaviour:
+  m_GameObject: {fileID: 1000}
+  m_Script: {fileID: 999999999999999999999999999999, guid: 0123456789abcdef0123456789abcdef, type: 3}
