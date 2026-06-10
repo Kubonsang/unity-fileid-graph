@@ -162,6 +162,36 @@ func TestRunDetectsComponentReferenceToMaterialBlock(t *testing.T) {
 	}
 }
 
+func TestRunDoesNotFlagUnmodeledComponentClass(t *testing.T) {
+	// Light (class 108) is a valid component that this tool does not model, so it is
+	// not registered in graph.Components. It must not be reported as a corrupt
+	// reference; an allow-list of known component classes would wrongly flag it.
+	graphResult := buildGraphFromString(t,
+		"--- !u!1 &1000\n"+
+			"GameObject:\n"+
+			"  m_Component:\n"+
+			"  - component: {fileID: 4000}\n"+
+			"  - component: {fileID: 1080000}\n"+
+			"  m_Name: Root\n"+
+			"--- !u!4 &4000\n"+
+			"Transform:\n"+
+			"  m_GameObject: {fileID: 1000}\n"+
+			"  m_Father: {fileID: 0}\n"+
+			"  m_Children: []\n"+
+			"--- !u!108 &1080000\n"+
+			"Light:\n"+
+			"  m_GameObject: {fileID: 1000}\n",
+	)
+
+	result := Run(graphResult)
+
+	for _, finding := range result.Errors {
+		if finding.Reason == "referenced_block_is_not_component" {
+			t.Fatalf("unmodeled component class flagged as non-component: %+v", finding)
+		}
+	}
+}
+
 func TestRunDetectsMissingGameObjectBlock(t *testing.T) {
 	graphResult := buildFixtureGraph(t, "check_missing_gameobject.prefab")
 

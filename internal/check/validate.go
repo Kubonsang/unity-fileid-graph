@@ -63,15 +63,14 @@ func validateMissingComponentBlocks(graphResult *core.Graph, result *core.CheckR
 				continue
 			}
 			if hasObjectBlock(graphResult, componentID) {
-				if hasComponentObjectBlock(graphResult, componentID) {
-					continue
+				if referencesKnownNonComponentBlock(graphResult, componentID) {
+					result.Errors = append(result.Errors, core.CheckFinding{
+						Code:         core.CheckMissingComponentBlock,
+						GameObjectID: gameObjectID,
+						ComponentID:  componentID,
+						Reason:       "referenced_block_is_not_component",
+					})
 				}
-				result.Errors = append(result.Errors, core.CheckFinding{
-					Code:         core.CheckMissingComponentBlock,
-					GameObjectID: gameObjectID,
-					ComponentID:  componentID,
-					Reason:       "referenced_block_is_not_component",
-				})
 				continue
 			}
 			result.Errors = append(result.Errors, core.CheckFinding{
@@ -261,21 +260,38 @@ func hasObjectBlock(graphResult *core.Graph, fileID int64) bool {
 	return len(graphResult.ObjectsByID[fileID]) > 0
 }
 
-func hasComponentObjectBlock(graphResult *core.Graph, fileID int64) bool {
-	for _, object := range graphResult.ObjectsByID[fileID] {
+// referencesKnownNonComponentBlock reports whether every block present at fileID
+// is a class that can never be a GameObject component (e.g. GameObject, Material).
+//
+// We deliberately use a deny-list of well-known non-component classes rather than
+// an allow-list of known components: Unity defines hundreds of component class IDs
+// (Light, Camera, Animator, AudioSource, ...) that this tool does not yet model.
+// Allow-listing would flag those valid components as corruption. Unknown classes
+// are left untouched here and instead surface as UNKNOWN_CLASS_ID warnings.
+func referencesKnownNonComponentBlock(graphResult *core.Graph, fileID int64) bool {
+	objects := graphResult.ObjectsByID[fileID]
+	if len(objects) == 0 {
+		return false
+	}
+	for _, object := range objects {
 		if object == nil {
 			continue
 		}
-		if isKnownComponentClassID(object.ClassID) {
-			return true
+		if !isKnownNonComponentClassID(object.ClassID) {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
-func isKnownComponentClassID(classID int) bool {
+func isKnownNonComponentClassID(classID int) bool {
 	switch classID {
-	case 4, 23, 33, 54, 65, 114:
+	case 1, // GameObject
+		21,   // Material
+		28,   // Texture2D
+		43,   // Mesh
+		48,   // Shader
+		1001: // PrefabInstance
 		return true
 	default:
 		return false
