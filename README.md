@@ -68,12 +68,30 @@ Parser is infrastructure. Safety planner is the product.
 - Adds dependency-aware blocked reasons for `MeshRenderer` and `MeshFilter`
 - Adds richer `REMOVE_COMPONENT` error output when restore metadata is present
 
+## v0.9a Scope
+
+- Adds `check --json` as the first stable machine-readable safety-kernel output.
+- Adds read-only `refs` and `refs --json` for targeted Unity PPtr/GUID evidence.
+- `refs` includes local fileID-only references and external GUID-backed references.
+- `refs` supports inline PPtr values only in v0.9a; multiline PPtr values are deferred.
+- `refs` field paths are best-effort evidence labels and are not a full YAML AST path contract.
+- `refs` is read-only evidence extraction; `status=WARN` means warning-only extraction issues and still exits `0`.
+- JSON `file` fields preserve the input path exactly as provided.
+- `check --json` emits `ERROR` issues first and `WARN` issues second.
+- Keeps `blocks` and `graph` text-only in v0.9a.
+- Does not add new mutation commands or expand structural write support.
+- Does not add a generic YAML parser, generic serializer, multiline PPtr parser, or structural mutation.
+- Intended consumer: `unity-ctx` can call `uyaml ... check --json` and `uyaml ... refs --json` before integrating graph safety into write paths.
+
 ## Usage
 
 ```bash
 go run ./cmd/uyaml prefab blocks testdata/fixtures/simple_prefab.prefab
 go run ./cmd/uyaml prefab graph testdata/fixtures/graph_prefab.prefab
 go run ./cmd/uyaml prefab check testdata/fixtures/check_ok.prefab
+go run ./cmd/uyaml prefab check testdata/fixtures/check_ok.prefab --json
+go run ./cmd/uyaml prefab refs testdata/fixtures/refs_prefab.prefab
+go run ./cmd/uyaml prefab refs testdata/fixtures/refs_prefab.prefab --json
 go run ./cmd/uyaml prefab roundtrip testdata/fixtures/check_ok.prefab --out /tmp/check_ok.copy.prefab
 go run ./cmd/uyaml prefab set testdata/fixtures/set_prefab.prefab --id 1000 --field m_IsActive --value 0
 cp testdata/fixtures/remove_component_ok.prefab /tmp/remove_component_ok.prefab

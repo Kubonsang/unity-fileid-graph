@@ -272,6 +272,34 @@ func TestRunRefsJSONMatchesGolden(t *testing.T) {
 	}
 }
 
+func TestRunBlocksRejectsJSONInV09a(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "blocks", "../../testdata/fixtures/simple_prefab.prefab", "--json"}, stdout, stderr)
+
+	if exitCode != 2 {
+		t.Fatalf("expected exit 2, got %d stdout=%q stderr=%q", exitCode, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "usage:") {
+		t.Fatalf("expected usage output, got %q", stderr.String())
+	}
+}
+
+func TestRunGraphRejectsJSONInV09a(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "graph", "../../testdata/fixtures/graph_prefab.prefab", "--json"}, stdout, stderr)
+
+	if exitCode != 2 {
+		t.Fatalf("expected exit 2, got %d stdout=%q stderr=%q", exitCode, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "usage:") {
+		t.Fatalf("expected usage output, got %q", stderr.String())
+	}
+}
+
 func TestRunRoundtripWritesOutputAndPrintsSummary(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
