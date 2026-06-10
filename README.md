@@ -76,6 +76,8 @@ Parser is infrastructure. Safety planner is the product.
 - `refs` supports inline PPtr values only in v0.9a; multiline PPtr values are deferred.
 - `refs` field paths are best-effort evidence labels and are not a full YAML AST path contract.
 - `refs` is read-only evidence extraction; `status=WARN` means warning-only extraction issues and still exits `0`.
+- `refs` may include `file_id=0` null PPtr values outside skipped graph-structural fields; consumers should treat them as null evidence, not object edges.
+- `refs` skips graph-structural Transform/GameObject fields already modeled by `graph`, including `m_GameObject`, `m_Father`, and `m_Children`.
 - JSON `file` fields preserve the input path exactly as provided.
 - `check --json` emits `ERROR` issues first and `WARN` issues second.
 - Keeps `blocks` and `graph` text-only in v0.9a.

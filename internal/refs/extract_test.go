@@ -52,6 +52,40 @@ func TestExtractKeepsCRLFFreeAnalysisView(t *testing.T) {
 	}
 }
 
+func TestExtractWarnsOnOverflowingInlinePPtr(t *testing.T) {
+	input := []byte("--- !u!114 &11400000\nMonoBehaviour:\n  m_Script: {fileID: 999999999999999999999999999999, guid: 0123456789abcdef0123456789abcdef, type: 3}\n")
+	parsed, err := parser.Parse(input)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	result := Extract(parsed, "prefab", "overflow.prefab")
+
+	if result.Status != core.RefsStatusWarn {
+		t.Fatalf("expected WARN, got %q", result.Status)
+	}
+	if len(result.Issues) != 1 {
+		t.Fatalf("expected 1 issue, got %d: %+v", len(result.Issues), result.Issues)
+	}
+	if result.Issues[0].Code != core.IssueUnknownFieldShape {
+		t.Fatalf("expected UNKNOWN_FIELD_SHAPE, got %+v", result.Issues[0])
+	}
+}
+
+func TestExtractSkipsTransformHierarchyStructuralRefs(t *testing.T) {
+	input := []byte("--- !u!4 &4000\nTransform:\n  m_GameObject: {fileID: 1000}\n  m_Father: {fileID: 3999}\n  m_Children:\n  - {fileID: 4001}\n")
+	parsed, err := parser.Parse(input)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	result := Extract(parsed, "prefab", "transform.prefab")
+
+	if len(result.References) != 0 {
+		t.Fatalf("expected structural Transform refs to be skipped, got %+v", result.References)
+	}
+}
+
 func assertRef(t *testing.T, got core.Reference, blockID int64, field string, fileID int64, guid string, typeValue int, hasGUID bool, hasType bool) {
 	t.Helper()
 	if got.BlockFileID != blockID || got.Field != field || got.FileID != fileID || got.GUID != guid || got.Type != typeValue || got.HasGUID != hasGUID || got.HasType != hasType {

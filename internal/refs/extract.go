@@ -23,7 +23,7 @@ func Extract(parsed *core.ParseResult, namespace string, file string) *core.Refs
 	}
 
 	for _, block := range parsed.Blocks {
-		typeName := typeNameForClassID(block.ClassID)
+		typeName := core.TypeNameForClassID(block.ClassID)
 		references, issues := extractBlockRefs(block, typeName)
 		result.References = append(result.References, references...)
 		result.Issues = append(result.Issues, issues...)
@@ -120,26 +120,5 @@ func fieldPathForListItem(field string, indexes map[string]int) string {
 }
 
 func skipGraphStructuralField(field string) bool {
-	return field == "m_GameObject" || field == "m_Father"
-}
-
-func typeNameForClassID(classID int) string {
-	switch classID {
-	case 1:
-		return "GameObject"
-	case 4:
-		return "Transform"
-	case 23:
-		return "MeshRenderer"
-	case 33:
-		return "MeshFilter"
-	case 54:
-		return "Rigidbody"
-	case 65:
-		return "BoxCollider"
-	case 114:
-		return "MonoBehaviour"
-	default:
-		return "UNKNOWN"
-	}
+	return field == "m_GameObject" || field == "m_Father" || strings.HasPrefix(field, "m_Children[")
 }
