@@ -38,6 +38,31 @@ type checkJSONResponse struct {
 	Issues    []jsonIssue `json:"issues"`
 }
 
+type refsJSONSummary struct {
+	References int `json:"references"`
+	Warnings   int `json:"warnings"`
+}
+
+type refsJSONReference struct {
+	BlockFileID int64  `json:"block_file_id"`
+	ClassID     int    `json:"class_id"`
+	Class       string `json:"class"`
+	Field       string `json:"field"`
+	FileID      int64  `json:"file_id"`
+	GUID        string `json:"guid,omitempty"`
+	Type        *int   `json:"type,omitempty"`
+}
+
+type refsJSONResponse struct {
+	Status     string              `json:"status"`
+	Namespace  string              `json:"namespace"`
+	Command    string              `json:"command"`
+	File       string              `json:"file"`
+	Summary    refsJSONSummary     `json:"summary"`
+	References []refsJSONReference `json:"references"`
+	Issues     []jsonIssue         `json:"issues"`
+}
+
 func writeCheckJSON(stdout io.Writer, namespace string, file string, result *core.CheckResult) int {
 	response := checkJSONResponse{
 		Status:    result.Status,
@@ -67,6 +92,49 @@ func writeCheckJSON(stdout io.Writer, namespace string, file string, result *cor
 	if result.Status == core.CheckStatusError {
 		return 1
 	}
+	return 0
+}
+
+func writeRefsJSON(stdout io.Writer, result *core.RefsResult) int {
+	response := refsJSONResponse{
+		Status:    result.Status,
+		Namespace: result.Namespace,
+		Command:   "refs",
+		File:      result.File,
+		Summary: refsJSONSummary{
+			References: len(result.References),
+			Warnings:   len(result.Issues),
+		},
+		References: []refsJSONReference{},
+		Issues:     []jsonIssue{},
+	}
+	for _, reference := range result.References {
+		item := refsJSONReference{
+			BlockFileID: reference.BlockFileID,
+			ClassID:     reference.ClassID,
+			Class:       reference.TypeName,
+			Field:       reference.Field,
+			FileID:      reference.FileID,
+			GUID:        reference.GUID,
+		}
+		if reference.HasType {
+			typeValue := reference.Type
+			item.Type = &typeValue
+		}
+		response.References = append(response.References, item)
+	}
+	for _, issue := range result.Issues {
+		response.Issues = append(response.Issues, jsonIssue{
+			Severity: "WARN",
+			Code:     issue.Code,
+			FileID:   issue.FileID,
+			Message:  issue.Message,
+		})
+	}
+
+	encoder := json.NewEncoder(stdout)
+	encoder.SetIndent("", "  ")
+	_ = encoder.Encode(response)
 	return 0
 }
 

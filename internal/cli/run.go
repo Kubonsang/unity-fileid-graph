@@ -84,7 +84,11 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return writeBlocks(stdout, result)
 	}
 	if args[1] == "refs" {
-		return writeRefs(stdout, refs.Extract(result, args[0], args[2]))
+		refsResult := refs.Extract(result, args[0], args[2])
+		if jsonOutput {
+			return writeRefsJSON(stdout, refsResult)
+		}
+		return writeRefs(stdout, refsResult)
 	}
 
 	graphResult, err := graph.Build(result)
