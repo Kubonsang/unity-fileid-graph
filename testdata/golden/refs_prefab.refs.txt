@@ -1,0 +1,6 @@
+REF block=1000 class=GameObject field=m_Component[0].component file_id=4000
+REF block=1000 class=GameObject field=m_Component[1].component file_id=11400000
+REF block=1000 class=GameObject field=m_Component[2].component file_id=23000
+REF block=11400000 class=MonoBehaviour field=m_Script file_id=11500000 guid=0123456789abcdef0123456789abcdef type=3
+REF block=11400000 class=MonoBehaviour field=m_Target file_id=4000
+REF block=23000 class=MeshRenderer field=m_Materials[0] file_id=2100000 guid=fedcba9876543210fedcba9876543210 type=2

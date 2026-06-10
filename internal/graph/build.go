@@ -24,7 +24,7 @@ func Build(parsed *core.ParseResult) (*core.Graph, error) {
 		object := &core.UnityObject{
 			FileID:   block.FileID,
 			ClassID:  block.ClassID,
-			TypeName: typeNameForClassID(block.ClassID),
+			TypeName: core.TypeNameForClassID(block.ClassID),
 			Block:    block,
 		}
 		graph.ObjectsByID[block.FileID] = append(graph.ObjectsByID[block.FileID], object)
@@ -44,7 +44,7 @@ func Build(parsed *core.ParseResult) (*core.Graph, error) {
 			graph.Components[block.FileID] = component
 			graph.Issues = append(graph.Issues, issues...)
 		case 54, 65:
-			component, issues := extractGenericComponent(block.FileID, block.BodyRaw, block.ClassID, typeNameForClassID(block.ClassID))
+			component, issues := extractGenericComponent(block.FileID, block.BodyRaw, block.ClassID, core.TypeNameForClassID(block.ClassID))
 			graph.Components[block.FileID] = component
 			graph.Issues = append(graph.Issues, issues...)
 		default:
@@ -69,21 +69,4 @@ func Build(parsed *core.ParseResult) (*core.Graph, error) {
 	}
 
 	return graph, nil
-}
-
-func typeNameForClassID(classID int) string {
-	switch classID {
-	case 1:
-		return "GameObject"
-	case 4:
-		return "Transform"
-	case 114:
-		return "MonoBehaviour"
-	case 54:
-		return "Rigidbody"
-	case 65:
-		return "BoxCollider"
-	default:
-		return "UNKNOWN"
-	}
 }

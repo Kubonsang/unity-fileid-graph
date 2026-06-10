@@ -13,6 +13,7 @@ import (
 	"github.com/Kubonsang/unity-fileid-graph/internal/graph"
 	"github.com/Kubonsang/unity-fileid-graph/internal/mutate"
 	"github.com/Kubonsang/unity-fileid-graph/internal/parser"
+	"github.com/Kubonsang/unity-fileid-graph/internal/refs"
 	"github.com/Kubonsang/unity-fileid-graph/internal/roundtrip"
 )
 
@@ -35,7 +36,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	command := args[1]
-	if command != "blocks" && command != "graph" && command != "check" && command != "roundtrip" && command != "set" && command != "remove-component" {
+	if command != "blocks" && command != "graph" && command != "check" && command != "refs" && command != "roundtrip" && command != "set" && command != "remove-component" {
 		writeUsage(stderr)
 		return 2
 	}
@@ -50,7 +51,19 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runRemoveComponent(args, stdout, stderr)
 	}
 
-	if len(args) != 3 {
+	jsonOutput := false
+	if len(args) == 4 {
+		if args[3] != "--json" {
+			writeUsage(stderr)
+			return 2
+		}
+		jsonOutput = true
+	}
+	if len(args) != 3 && len(args) != 4 {
+		writeUsage(stderr)
+		return 2
+	}
+	if jsonOutput && command != "check" && command != "refs" {
 		writeUsage(stderr)
 		return 2
 	}
@@ -70,6 +83,13 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	if args[1] == "blocks" {
 		return writeBlocks(stdout, result)
 	}
+	if args[1] == "refs" {
+		refsResult := refs.Extract(result, args[0], args[2])
+		if jsonOutput {
+			return writeRefsJSON(stdout, refsResult)
+		}
+		return writeRefs(stdout, refsResult)
+	}
 
 	graphResult, err := graph.Build(result)
 	if err != nil {
@@ -81,7 +101,11 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return writeGraph(stdout, graphResult)
 	}
 
-	return writeCheck(stdout, check.Run(graphResult))
+	checkResult := check.Run(graphResult)
+	if jsonOutput {
+		return writeCheckJSON(stdout, args[0], args[2], checkResult)
+	}
+	return writeCheck(stdout, checkResult)
 }
 
 func writeBlocks(stdout io.Writer, result *core.ParseResult) int {
@@ -96,10 +120,32 @@ func writeBlocks(stdout io.Writer, result *core.ParseResult) int {
 }
 
 func writeUsage(stderr io.Writer) {
-	_, _ = fmt.Fprintln(stderr, "usage: uyaml <prefab|scene|asset|mat> <blocks|graph|check> <file>")
+	_, _ = fmt.Fprintln(stderr, "usage: uyaml <prefab|scene|asset|mat> <blocks|graph|check|refs> <file>")
 	_, _ = fmt.Fprintln(stderr, "   or: uyaml <prefab|scene|asset|mat> roundtrip <file> --out <dest> [--mode lossless-block-copy]")
 	_, _ = fmt.Fprintln(stderr, "   or: uyaml <prefab|scene|asset|mat> set <file> --id <fileID> --field <top-level-field-name> --value <value>")
 	_, _ = fmt.Fprintln(stderr, "   or: uyaml prefab remove-component <file> --id <fileID> --experimental --write")
+}
+
+func writeRefs(stdout io.Writer, result *core.RefsResult) int {
+	for _, reference := range result.References {
+		_, _ = fmt.Fprintf(stdout, "REF block=%d class=%s field=%s file_id=%d",
+			reference.BlockFileID,
+			reference.TypeName,
+			reference.Field,
+			reference.FileID,
+		)
+		if reference.HasGUID {
+			_, _ = fmt.Fprintf(stdout, " guid=%s", reference.GUID)
+		}
+		if reference.HasType {
+			_, _ = fmt.Fprintf(stdout, " type=%d", reference.Type)
+		}
+		_, _ = fmt.Fprintln(stdout)
+	}
+	for _, issue := range result.Issues {
+		_, _ = fmt.Fprintf(stdout, "WARN code=%s file_id=%d message=%q\n", issue.Code, issue.FileID, issue.Message)
+	}
+	return 0
 }
 
 func writeGraph(stdout io.Writer, graphResult *core.Graph) int {

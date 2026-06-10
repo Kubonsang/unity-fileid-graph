@@ -1,0 +1,59 @@
+{
+  "status": "OK",
+  "namespace": "prefab",
+  "command": "refs",
+  "file": "../../testdata/fixtures/refs_prefab.prefab",
+  "summary": {
+    "references": 6,
+    "warnings": 0
+  },
+  "references": [
+    {
+      "block_file_id": 1000,
+      "class_id": 1,
+      "class": "GameObject",
+      "field": "m_Component[0].component",
+      "file_id": 4000
+    },
+    {
+      "block_file_id": 1000,
+      "class_id": 1,
+      "class": "GameObject",
+      "field": "m_Component[1].component",
+      "file_id": 11400000
+    },
+    {
+      "block_file_id": 1000,
+      "class_id": 1,
+      "class": "GameObject",
+      "field": "m_Component[2].component",
+      "file_id": 23000
+    },
+    {
+      "block_file_id": 11400000,
+      "class_id": 114,
+      "class": "MonoBehaviour",
+      "field": "m_Script",
+      "file_id": 11500000,
+      "guid": "0123456789abcdef0123456789abcdef",
+      "type": 3
+    },
+    {
+      "block_file_id": 11400000,
+      "class_id": 114,
+      "class": "MonoBehaviour",
+      "field": "m_Target",
+      "file_id": 4000
+    },
+    {
+      "block_file_id": 23000,
+      "class_id": 23,
+      "class": "MeshRenderer",
+      "field": "m_Materials[0]",
+      "file_id": 2100000,
+      "guid": "fedcba9876543210fedcba9876543210",
+      "type": 2
+    }
+  ],
+  "issues": []
+}

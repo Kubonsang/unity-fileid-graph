@@ -4,13 +4,13 @@ import "testing"
 
 func TestCheckResultSupportsErrorAndWarnStates(t *testing.T) {
 	result := &CheckResult{
-		Status:           CheckStatusWarn,
-		BlockCount:       1,
-		GameObjectCount:  1,
-		ComponentCount:   0,
-		TransformCount:   0,
-		Errors:           []CheckFinding{},
-		Warnings:         []CheckFinding{{Code: CheckSuspiciousMonoBehaviourScript, ComponentID: 11400000, Reason: "missing_script"}},
+		Status:          CheckStatusWarn,
+		BlockCount:      1,
+		GameObjectCount: 1,
+		ComponentCount:  0,
+		TransformCount:  0,
+		Errors:          []CheckFinding{},
+		Warnings:        []CheckFinding{{Code: CheckSuspiciousMonoBehaviourScript, ComponentID: 11400000, Reason: "missing_script"}},
 	}
 
 	if result.Status != CheckStatusWarn {
@@ -71,5 +71,17 @@ func TestCheckResultUsesSlicePlacementForSeverity(t *testing.T) {
 	}
 	if result.Warnings[0].Code != CheckSuspiciousMonoBehaviourScript {
 		t.Fatalf("expected warning code %q, got %q", CheckSuspiciousMonoBehaviourScript, result.Warnings[0].Code)
+	}
+}
+
+func TestRefsResultRecomputeStatusReturnsWarnForIssues(t *testing.T) {
+	result := &RefsResult{
+		Issues: []Issue{{Code: IssueUnknownFieldShape}},
+	}
+
+	result.RecomputeStatus()
+
+	if result.Status != RefsStatusWarn {
+		t.Fatalf("expected WARN, got %q", result.Status)
 	}
 }
