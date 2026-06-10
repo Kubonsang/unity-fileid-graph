@@ -1,0 +1,22 @@
+--- !u!1 &1000
+GameObject:
+  m_Name: RefRoot
+  m_Component:
+  - component: {fileID: 4000}
+  - component: {fileID: 11400000}
+  - component: {fileID: 23000}
+--- !u!4 &4000
+Transform:
+  m_GameObject: {fileID: 1000}
+  m_Father: {fileID: 0}
+  m_Children: []
+--- !u!114 &11400000
+MonoBehaviour:
+  m_GameObject: {fileID: 1000}
+  m_Script: {fileID: 11500000, guid: 0123456789abcdef0123456789abcdef, type: 3}
+  m_Target: {fileID: 4000}
+--- !u!23 &23000
+MeshRenderer:
+  m_GameObject: {fileID: 1000}
+  m_Materials:
+  - {fileID: 2100000, guid: fedcba9876543210fedcba9876543210, type: 2}
