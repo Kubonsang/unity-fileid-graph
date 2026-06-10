@@ -254,6 +254,24 @@ func TestRunRefsMatchesGoldenPrefab(t *testing.T) {
 	}
 }
 
+func TestRunRefsWarnExitsZeroAndMatchesGolden(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "refs", "../../testdata/fixtures/refs_warn_overflow.prefab"}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit 0 for refs WARN, got %d stderr=%q", exitCode, stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+	want := loadGolden(t, "refs_warn_overflow.refs.txt")
+	if stdout.String() != want {
+		t.Fatalf("unexpected stdout:\nwant %q\ngot  %q", want, stdout.String())
+	}
+}
+
 func TestRunRefsJSONMatchesGolden(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -267,6 +285,24 @@ func TestRunRefsJSONMatchesGolden(t *testing.T) {
 		t.Fatalf("expected empty stderr, got %q", stderr.String())
 	}
 	want := loadGolden(t, "refs_prefab.refs.json")
+	if stdout.String() != want {
+		t.Fatalf("unexpected stdout:\nwant %q\ngot  %q", want, stdout.String())
+	}
+}
+
+func TestRunRefsJSONWarnExitsZeroAndMatchesGolden(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "refs", "../../testdata/fixtures/refs_warn_overflow.prefab", "--json"}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit 0 for refs WARN json, got %d stderr=%q", exitCode, stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+	want := loadGolden(t, "refs_warn_overflow.refs.json")
 	if stdout.String() != want {
 		t.Fatalf("unexpected stdout:\nwant %q\ngot  %q", want, stdout.String())
 	}
