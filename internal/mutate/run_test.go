@@ -273,3 +273,49 @@ func TestCompleteWritePipelineMarksRestoreFailedWhenBackupRestoreFails(t *testin
 		t.Fatalf("expected restore_failed=true")
 	}
 }
+
+func TestRunSetRestoresOriginalOnFinalCheckError(t *testing.T) {
+	source := filepath.Join("..", "..", "testdata", "fixtures", "set_prefab.prefab")
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "set_prefab.prefab")
+	input, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("read source: %v", err)
+	}
+	if err := os.WriteFile(target, input, 0o644); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	corrupted := []byte("--- !u!1 &1000\nGameObject:\n  m_Name: Corrupted\n")
+
+	result, err := runSetWithFileOps(core.SetOptions{
+		InputPath: target,
+		FileID:    1000,
+		Field:     "m_IsActive",
+		Value:     "0",
+	}, defaultFileOps(), writePipelineOptions{
+		RestoreOnFinalCheckError: true,
+		AfterReplace: func(path string) error {
+			return os.WriteFile(path, corrupted, 0o644)
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != core.MutationStatusError {
+		t.Fatalf("expected ERROR, got %q", result.Status)
+	}
+	if result.Code != core.MutationCodeFinalCheckError {
+		t.Fatalf("expected FINAL_CHECK_ERROR, got %q", result.Code)
+	}
+	if result.Message != "restored=true" {
+		t.Fatalf("expected restored=true message, got %q", result.Message)
+	}
+
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("read restored target: %v", err)
+	}
+	if string(got) != string(input) {
+		t.Fatalf("expected original bytes restored")
+	}
+}

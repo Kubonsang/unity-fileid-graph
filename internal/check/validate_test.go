@@ -99,6 +99,99 @@ func TestRunDetectsMissingComponentBlock(t *testing.T) {
 	}
 }
 
+func TestRunDetectsComponentReferenceToNonComponentBlock(t *testing.T) {
+	graphResult := buildGraphFromString(t,
+		"--- !u!1 &1000\n"+
+			"GameObject:\n"+
+			"  m_Component:\n"+
+			"  - component: {fileID: 4000}\n"+
+			"  - component: {fileID: 2000}\n"+
+			"  m_Name: Root\n"+
+			"--- !u!4 &4000\n"+
+			"Transform:\n"+
+			"  m_GameObject: {fileID: 1000}\n"+
+			"  m_Father: {fileID: 0}\n"+
+			"  m_Children: []\n"+
+			"--- !u!1 &2000\n"+
+			"GameObject:\n"+
+			"  m_Component:\n"+
+			"  - component: {fileID: 5000}\n"+
+			"  m_Name: NotAComponent\n"+
+			"--- !u!4 &5000\n"+
+			"Transform:\n"+
+			"  m_GameObject: {fileID: 2000}\n"+
+			"  m_Father: {fileID: 0}\n"+
+			"  m_Children: []\n",
+	)
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusError {
+		t.Fatalf("expected status %q, got %q", core.CheckStatusError, result.Status)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("expected 1 error, got %d: %+v", len(result.Errors), result.Errors)
+	}
+	if result.Errors[0].Code != core.CheckMissingComponentBlock || result.Errors[0].GameObjectID != 1000 || result.Errors[0].ComponentID != 2000 || result.Errors[0].Reason != "referenced_block_is_not_component" {
+		t.Fatalf("unexpected error: %+v", result.Errors[0])
+	}
+}
+
+func TestRunDetectsComponentReferenceToMaterialBlock(t *testing.T) {
+	graphResult := buildGraphFromString(t,
+		"--- !u!1 &1000\n"+
+			"GameObject:\n"+
+			"  m_Component:\n"+
+			"  - component: {fileID: 2100000}\n"+
+			"  m_Name: Root\n"+
+			"--- !u!21 &2100000\n"+
+			"Material:\n"+
+			"  m_Name: NotAComponent\n",
+	)
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusError {
+		t.Fatalf("expected status %q, got %q", core.CheckStatusError, result.Status)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("expected 1 error, got %d: %+v", len(result.Errors), result.Errors)
+	}
+	if result.Errors[0].Code != core.CheckMissingComponentBlock || result.Errors[0].GameObjectID != 1000 || result.Errors[0].ComponentID != 2100000 || result.Errors[0].Reason != "referenced_block_is_not_component" {
+		t.Fatalf("unexpected error: %+v", result.Errors[0])
+	}
+}
+
+func TestRunDoesNotFlagUnmodeledComponentClass(t *testing.T) {
+	// Light (class 108) is a valid component that this tool does not model, so it is
+	// not registered in graph.Components. It must not be reported as a corrupt
+	// reference; an allow-list of known component classes would wrongly flag it.
+	graphResult := buildGraphFromString(t,
+		"--- !u!1 &1000\n"+
+			"GameObject:\n"+
+			"  m_Component:\n"+
+			"  - component: {fileID: 4000}\n"+
+			"  - component: {fileID: 1080000}\n"+
+			"  m_Name: Root\n"+
+			"--- !u!4 &4000\n"+
+			"Transform:\n"+
+			"  m_GameObject: {fileID: 1000}\n"+
+			"  m_Father: {fileID: 0}\n"+
+			"  m_Children: []\n"+
+			"--- !u!108 &1080000\n"+
+			"Light:\n"+
+			"  m_GameObject: {fileID: 1000}\n",
+	)
+
+	result := Run(graphResult)
+
+	for _, finding := range result.Errors {
+		if finding.Reason == "referenced_block_is_not_component" {
+			t.Fatalf("unmodeled component class flagged as non-component: %+v", finding)
+		}
+	}
+}
+
 func TestRunDetectsMissingGameObjectBlock(t *testing.T) {
 	graphResult := buildFixtureGraph(t, "check_missing_gameobject.prefab")
 
@@ -354,13 +447,13 @@ func TestRunDoesNotTreatUnsupportedPresentComponentBlockAsMissing(t *testing.T) 
 			{FileID: 23000, ClassID: 23},
 		},
 		BlocksByID: map[int64][]*core.Block{
-			1000: {{FileID: 1000, ClassID: 1}},
-			4000: {{FileID: 4000, ClassID: 4}},
+			1000:  {{FileID: 1000, ClassID: 1}},
+			4000:  {{FileID: 4000, ClassID: 4}},
 			23000: {{FileID: 23000, ClassID: 23}},
 		},
 		ObjectsByID: map[int64][]*core.UnityObject{
-			1000: {{FileID: 1000, ClassID: 1, TypeName: "GameObject"}},
-			4000: {{FileID: 4000, ClassID: 4, TypeName: "Transform"}},
+			1000:  {{FileID: 1000, ClassID: 1, TypeName: "GameObject"}},
+			4000:  {{FileID: 4000, ClassID: 4, TypeName: "Transform"}},
 			23000: {{FileID: 23000, ClassID: 23, TypeName: "MeshRenderer"}},
 		},
 		GameObjects: map[int64]*core.GameObjectNode{
@@ -413,15 +506,25 @@ func buildFixtureGraph(t *testing.T, name string) *core.Graph {
 	if err != nil {
 		t.Fatalf("read fixture %q: %v", name, err)
 	}
+	return buildGraphFromBytes(t, input)
+}
+
+func buildGraphFromString(t *testing.T, input string) *core.Graph {
+	t.Helper()
+	return buildGraphFromBytes(t, []byte(input))
+}
+
+func buildGraphFromBytes(t *testing.T, input []byte) *core.Graph {
+	t.Helper()
 
 	parsed, err := parser.Parse(input)
 	if err != nil {
-		t.Fatalf("parse fixture %q: %v", name, err)
+		t.Fatalf("parse input: %v", err)
 	}
 
 	graphResult, err := graph.Build(parsed)
 	if err != nil {
-		t.Fatalf("build fixture %q: %v", name, err)
+		t.Fatalf("build input: %v", err)
 	}
 
 	return graphResult

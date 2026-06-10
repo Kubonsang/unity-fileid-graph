@@ -319,6 +319,32 @@ func TestRunSetReturnsBlockedExitZero(t *testing.T) {
 	}
 }
 
+func TestWriteSetPrintsMessageOnErrorStatus(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	result := &core.SetResult{
+		Status:     core.MutationStatusError,
+		Code:       core.MutationCodeFinalCheckError,
+		FileID:     1000,
+		Field:      "m_IsActive",
+		OldValue:   "1",
+		NewValue:   "0",
+		PreCheck:   core.CheckStatusOK,
+		TempCheck:  core.CheckStatusOK,
+		FinalCheck: core.CheckStatusError,
+		BackupPath: "/tmp/sample.prefab.bak",
+		Message:    "restored=true",
+	}
+
+	exitCode := writeSet(stdout, result)
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit 1, got %d", exitCode)
+	}
+	if !strings.Contains(stdout.String(), `message="restored=true"`) {
+		t.Fatalf("expected restore message in stdout, got %q", stdout.String())
+	}
+}
+
 func TestRunSetRejectsMissingValueFlagWithoutMutating(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}

@@ -40,10 +40,12 @@ type writePipelineOptions struct {
 }
 
 func RunSet(opts core.SetOptions) (*core.SetResult, error) {
-	return runSetWithFileOps(opts, defaultFileOps())
+	return runSetWithFileOps(opts, defaultFileOps(), writePipelineOptions{
+		RestoreOnFinalCheckError: true,
+	})
 }
 
-func runSetWithFileOps(opts core.SetOptions, ops fileOps) (*core.SetResult, error) {
+func runSetWithFileOps(opts core.SetOptions, ops fileOps, pipelineOptions writePipelineOptions) (*core.SetResult, error) {
 	input, err := os.ReadFile(opts.InputPath)
 	if err != nil {
 		return nil, err
@@ -97,9 +99,7 @@ func runSetWithFileOps(opts core.SetOptions, ops fileOps) (*core.SetResult, erro
 	block.BodyRaw = edit.NewBody
 
 	output := roundtrip.AssembleLosslessCopy(parsed)
-	pipeline, err := completeWritePipeline(opts.InputPath, output, ops, writePipelineOptions{
-		RestoreOnFinalCheckError: false,
-	})
+	pipeline, err := completeWritePipeline(opts.InputPath, output, ops, pipelineOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +113,12 @@ func runSetWithFileOps(opts core.SetOptions, ops fileOps) (*core.SetResult, erro
 	}
 	if result.FinalCheck == core.CheckStatusError {
 		result.Code = core.MutationCodeFinalCheckError
+		if pipeline.Restored {
+			result.Message = "restored=true"
+		}
+		if pipeline.RestoreFail {
+			result.Message = "restore_failed=true"
+		}
 	}
 	result.RecomputeStatus()
 	return result, nil
