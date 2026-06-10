@@ -1,0 +1,15 @@
+{
+  "status": "OK",
+  "namespace": "prefab",
+  "command": "check",
+  "file": "../../testdata/fixtures/check_ok.prefab",
+  "summary": {
+    "blocks": 2,
+    "gameobjects": 1,
+    "components": 1,
+    "transforms": 1,
+    "warnings": 0,
+    "errors": 0
+  },
+  "issues": []
+}

@@ -51,7 +51,19 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runRemoveComponent(args, stdout, stderr)
 	}
 
-	if len(args) != 3 {
+	jsonOutput := false
+	if len(args) == 4 {
+		if args[3] != "--json" {
+			writeUsage(stderr)
+			return 2
+		}
+		jsonOutput = true
+	}
+	if len(args) != 3 && len(args) != 4 {
+		writeUsage(stderr)
+		return 2
+	}
+	if jsonOutput && command != "check" && command != "refs" {
 		writeUsage(stderr)
 		return 2
 	}
@@ -85,7 +97,11 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return writeGraph(stdout, graphResult)
 	}
 
-	return writeCheck(stdout, check.Run(graphResult))
+	checkResult := check.Run(graphResult)
+	if jsonOutput {
+		return writeCheckJSON(stdout, args[0], args[2], checkResult)
+	}
+	return writeCheck(stdout, checkResult)
 }
 
 func writeBlocks(stdout io.Writer, result *core.ParseResult) int {

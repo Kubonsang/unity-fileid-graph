@@ -184,6 +184,24 @@ func TestRunMatchesGoldenCheckOK(t *testing.T) {
 	}
 }
 
+func TestRunCheckJSONMatchesGolden(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := Run([]string{"prefab", "check", "../../testdata/fixtures/check_ok.prefab", "--json"}, stdout, stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%q", exitCode, stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+	want := loadGolden(t, "check_ok.check.json")
+	if stdout.String() != want {
+		t.Fatalf("unexpected stdout:\nwant %q\ngot  %q", want, stdout.String())
+	}
+}
+
 func TestRunMatchesGoldenDuplicateFileIDCheck(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
