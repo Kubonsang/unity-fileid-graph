@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Kubonsang/unity-fileid-graph/internal/core"
+	"github.com/Kubonsang/unity-fileid-graph/pkg/core"
 )
 
 var ErrFieldNotFound = errors.New("field not found")

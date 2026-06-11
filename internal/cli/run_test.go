@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Kubonsang/unity-fileid-graph/internal/core"
+	"github.com/Kubonsang/unity-fileid-graph/pkg/core"
 )
 
 func TestRunRejectsMissingArguments(t *testing.T) {

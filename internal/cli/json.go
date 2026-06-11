@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/Kubonsang/unity-fileid-graph/internal/core"
+	"github.com/Kubonsang/unity-fileid-graph/pkg/core"
 )
 
 type jsonSummary struct {

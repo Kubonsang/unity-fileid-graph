@@ -1,6 +1,6 @@
 package graph
 
-import "github.com/Kubonsang/unity-fileid-graph/internal/core"
+import "github.com/Kubonsang/unity-fileid-graph/pkg/core"
 
 func Build(parsed *core.ParseResult) (*core.Graph, error) {
 	graph := &core.Graph{

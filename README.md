@@ -85,6 +85,26 @@ Parser is infrastructure. Safety planner is the product.
 - Does not add a generic YAML parser, generic serializer, multiline PPtr parser, or structural mutation.
 - Intended consumer: `unity-ctx` can call `uyaml ... check --json` and `uyaml ... refs --json` before integrating graph safety into write paths.
 
+## Library Surface (pkg/)
+
+`pkg/` is the supported Go library surface for external consumers such as `unity-ctx`:
+
+- `pkg/parser` — lossless block parsing (`parser.Parse`)
+- `pkg/graph` — fileID graph extraction (`graph.Build`)
+- `pkg/check` — graph integrity validation (`check.Run`)
+- `pkg/refs` — PPtr/GUID reference evidence extraction (`refs.Extract`)
+- `pkg/core` — shared data model (`Block`, `Graph`, `CheckResult`, `RefsResult`, ...)
+
+```go
+parsed, err := parser.Parse(data)
+g, err := graph.Build(parsed)
+result := check.Run(g) // result.Status: OK | WARN | ERROR
+```
+
+`internal/` (`cli`, `mutate`, `roundtrip`) remains private to the `uyaml` CLI.
+Consumers should pin a tagged release; until `v0.9.0` is tagged, a local
+`replace` directive is required.
+
 ## Usage
 
 ```bash

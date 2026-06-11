@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Kubonsang/unity-fileid-graph/internal/core"
+	"github.com/Kubonsang/unity-fileid-graph/pkg/core"
 )
 
 var componentRefPattern = regexp.MustCompile(`^  - component: \{fileID:\s*(-?\d+)\}\s*$`)
