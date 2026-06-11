@@ -9,12 +9,12 @@ import (
 	"strings"
 
 	"github.com/Kubonsang/unity-fileid-graph/internal/check"
-	"github.com/Kubonsang/unity-fileid-graph/internal/core"
 	"github.com/Kubonsang/unity-fileid-graph/internal/graph"
 	"github.com/Kubonsang/unity-fileid-graph/internal/mutate"
 	"github.com/Kubonsang/unity-fileid-graph/internal/parser"
 	"github.com/Kubonsang/unity-fileid-graph/internal/refs"
 	"github.com/Kubonsang/unity-fileid-graph/internal/roundtrip"
+	"github.com/Kubonsang/unity-fileid-graph/pkg/core"
 )
 
 var validNamespaces = map[string]struct{}{

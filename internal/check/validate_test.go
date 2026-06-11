@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Kubonsang/unity-fileid-graph/internal/core"
 	"github.com/Kubonsang/unity-fileid-graph/internal/graph"
 	"github.com/Kubonsang/unity-fileid-graph/internal/parser"
+	"github.com/Kubonsang/unity-fileid-graph/pkg/core"
 )
 
 func TestRunReturnsOKForHealthyFixture(t *testing.T) {

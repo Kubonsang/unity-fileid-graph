@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Kubonsang/unity-fileid-graph/internal/core"
 	"github.com/Kubonsang/unity-fileid-graph/internal/parser"
+	"github.com/Kubonsang/unity-fileid-graph/pkg/core"
 )
 
 func TestBuildPreservesDuplicateFileIDBlocks(t *testing.T) {
