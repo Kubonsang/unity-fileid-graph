@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Kubonsang/unity-fileid-graph/internal/parser"
+	"github.com/Kubonsang/unity-fileid-graph/pkg/parser"
 )
 
 func TestAssembleLosslessCopyMatchesOriginalFixtureBytes(t *testing.T) {

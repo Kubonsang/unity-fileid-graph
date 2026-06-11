@@ -6,9 +6,9 @@ import (
 
 	"github.com/Kubonsang/unity-fileid-graph/internal/check"
 	"github.com/Kubonsang/unity-fileid-graph/internal/graph"
-	"github.com/Kubonsang/unity-fileid-graph/internal/parser"
 	"github.com/Kubonsang/unity-fileid-graph/internal/roundtrip"
 	"github.com/Kubonsang/unity-fileid-graph/pkg/core"
+	"github.com/Kubonsang/unity-fileid-graph/pkg/parser"
 )
 
 var removableComponentTypes = map[int]string{
