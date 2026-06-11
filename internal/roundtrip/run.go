@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"os"
 
-	"github.com/Kubonsang/unity-fileid-graph/internal/check"
-	"github.com/Kubonsang/unity-fileid-graph/internal/graph"
+	"github.com/Kubonsang/unity-fileid-graph/pkg/check"
 	"github.com/Kubonsang/unity-fileid-graph/pkg/core"
+	"github.com/Kubonsang/unity-fileid-graph/pkg/graph"
 	"github.com/Kubonsang/unity-fileid-graph/pkg/parser"
 )
 
