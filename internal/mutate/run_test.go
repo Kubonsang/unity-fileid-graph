@@ -46,6 +46,40 @@ func TestRunSetMutatesExistingFieldAndCreatesBackup(t *testing.T) {
 	}
 }
 
+// TestRunSetReportsPreCheckSkippedForStrippedChild verifies skip visibility
+// propagates to the write path: a SET whose pre_check skipped a stripped/unmodeled
+// transform-symmetry link reports that on the result, so a write is never read as
+// "fully symmetry-checked" when it was not.
+func TestRunSetReportsPreCheckSkippedForStrippedChild(t *testing.T) {
+	source := filepath.Join("..", "..", "testdata", "fixtures", "transform_children_f3_stripped_child.prefab")
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "stripped.prefab")
+	input, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("read source: %v", err)
+	}
+	if err := os.WriteFile(target, input, 0o644); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+
+	result, err := RunSet(core.SetOptions{
+		InputPath: target,
+		FileID:    1000,
+		Field:     "m_IsActive",
+		Value:     "0",
+	})
+	if err != nil {
+		t.Fatalf("RunSet returned error: %v", err)
+	}
+	if result.Status != core.MutationStatusOK {
+		t.Fatalf("expected OK, got %q", result.Status)
+	}
+	if result.PreCheckSkippedLinks != 1 || result.PreCheckSkippedStripped != 1 || result.PreCheckSkippedUnmodeledClass != 0 {
+		t.Fatalf("write-path skip visibility wrong: links=%d stripped=%d unmodeled=%d",
+			result.PreCheckSkippedLinks, result.PreCheckSkippedStripped, result.PreCheckSkippedUnmodeledClass)
+	}
+}
+
 func TestRunSetReturnsWarnWhenPreAndFinalChecksWarn(t *testing.T) {
 	source := filepath.Join("..", "..", "testdata", "fixtures", "set_material.mat")
 	tempDir := t.TempDir()

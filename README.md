@@ -106,6 +106,11 @@ Parser is infrastructure. Safety planner is the product.
   when `N>0`); `check --json` adds `skipped_links`, `skipped_stripped`,
   `skipped_unmodeled_class` to `summary`. A passing check therefore never silently
   means "skipped everything" — it means clean within the checkable scope.
+- The write path carries the same visibility: `set` reports `pre_check_skipped=N`
+  (and `pre_check_skip_reasons=...` when `N>0`), and `core.SetResult` /
+  `core.RemoveComponentResult` expose the pre_check skip counts, so a committed
+  write is never read as fully symmetry-checked when stripped/unmodeled endpoints
+  were skipped.
 - **Deferred (future slice):** model `RectTransform` (class 224) in transform
   symmetry so UI hierarchies are validated rather than skipped, and re-survey any
   further unmodeled transform classes — deferred pending a UI-heavy corpus, to be

@@ -441,6 +441,7 @@ func writeSet(stdout io.Writer, result *core.SetResult) int {
 		result.FinalCheck,
 		result.BackupPath,
 	)
+	writePreCheckSkip(stdout, result.PreCheckSkippedLinks, result.PreCheckSkippedStripped, result.PreCheckSkippedUnmodeledClass)
 	if result.Status == core.MutationStatusError && result.Message != "" {
 		_, _ = fmt.Fprintf(stdout, " message=%q", result.Message)
 	}
@@ -450,6 +451,16 @@ func writeSet(stdout io.Writer, result *core.SetResult) int {
 		return 1
 	}
 	return 0
+}
+
+// writePreCheckSkip surfaces the pre_check's skipped transform-symmetry links on
+// a write result so a committed write is never read as "fully symmetry-checked"
+// when stripped / unmodeled-class endpoints were skipped.
+func writePreCheckSkip(stdout io.Writer, links, stripped, unmodeled int) {
+	_, _ = fmt.Fprintf(stdout, " pre_check_skipped=%d", links)
+	if links > 0 {
+		_, _ = fmt.Fprintf(stdout, " pre_check_skip_reasons=stripped:%d,unmodeled_class:%d", stripped, unmodeled)
+	}
 }
 
 func runRemoveComponent(args []string, stdout, stderr io.Writer) int {

@@ -62,7 +62,14 @@ func runSetWithFileOps(opts core.SetOptions, ops fileOps, pipelineOptions writeP
 	}
 	pre := check.Run(graphResult)
 
-	result := &core.SetResult{FileID: opts.FileID, Field: opts.Field, PreCheck: pre.Status}
+	result := &core.SetResult{
+		FileID:                        opts.FileID,
+		Field:                         opts.Field,
+		PreCheck:                      pre.Status,
+		PreCheckSkippedLinks:          pre.SkippedLinks,
+		PreCheckSkippedStripped:       pre.SkippedStripped,
+		PreCheckSkippedUnmodeledClass: pre.SkippedUnmodeledClass,
+	}
 
 	block, code := FindUniqueBlockByFileID(parsed, opts.FileID)
 	if code != "" {
