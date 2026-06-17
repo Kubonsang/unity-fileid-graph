@@ -12,6 +12,7 @@ const (
 	CheckMissingGameObjectBlock        = "MISSING_GAMEOBJECT_BLOCK"
 	CheckGoComponentBackrefMismatch    = "GO_COMPONENT_BACKREF_MISMATCH"
 	CheckTransformParentChildMismatch  = "TRANSFORM_PARENT_CHILD_MISMATCH"
+	CheckTransformParentCycle          = "TRANSFORM_PARENT_CYCLE"
 	CheckMissingTransformComponent     = "MISSING_TRANSFORM_COMPONENT"
 	CheckSuspiciousMonoBehaviourScript = "SUSPICIOUS_MONOBEHAVIOUR_SCRIPT"
 )

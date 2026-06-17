@@ -2,6 +2,8 @@ package check
 
 import (
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/Kubonsang/unity-fileid-graph/pkg/core"
 )
@@ -30,6 +32,7 @@ func Run(graphResult *core.Graph) *core.CheckResult {
 	validateMissingGameObjectBlocks(graphResult, result)
 	validateGameObjectComponentBackrefs(graphResult, result)
 	validateTransformParentChildRelationships(graphResult, result)
+	validateTransformCycles(graphResult, result)
 	validateMissingTransformComponents(graphResult, result)
 	validateSuspiciousMonoBehaviourScripts(graphResult, result)
 	appendGraphWarnings(graphResult, result)
@@ -234,6 +237,150 @@ func validateTransformParentChildRelationships(graphResult *core.Graph, result *
 			}
 		}
 	}
+}
+
+// validateTransformCycles detects transform parent cycles. It runs directed-cycle
+// detection independently on the father graph (t -> t.Father) and the children
+// graph (t -> each child). A valid hierarchy is a tree: acyclic in BOTH
+// directions, so a normal symmetric parent/child pair (A.Father=B and B lists A)
+// is NOT a cycle. Only a real loop is — a father chain (A->B->C->A), a
+// children chain, or a 2-node mutual link (A.Father=B and B.Father=A). A diamond
+// (a node reachable two ways but with no back-edge) is not flagged.
+//
+// It reads Transforms[id].Father/.Children directly and does NOT short-circuit on
+// hasGraphIssueForFile: a cycle must surface even when a node carries another
+// issue (otherwise gap1-style issues could hide the very loop they create).
+// Stripped / unmodeled-class endpoints simply contribute no edges (they are not
+// in Transforms), so they never form or mask a cycle.
+func validateTransformCycles(graphResult *core.Graph, result *core.CheckResult) {
+	transformExists := func(id int64) bool {
+		_, ok := graphResult.Transforms[id]
+		return ok
+	}
+	fatherAdj := func(id int64) []int64 {
+		t := graphResult.Transforms[id]
+		if t == nil || t.Father == 0 || !transformExists(t.Father) {
+			return nil
+		}
+		return []int64{t.Father}
+	}
+	childAdj := func(id int64) []int64 {
+		t := graphResult.Transforms[id]
+		if t == nil {
+			return nil
+		}
+		out := make([]int64, 0, len(t.Children))
+		for _, c := range t.Children {
+			if transformExists(c) {
+				out = append(out, c)
+			}
+		}
+		return out
+	}
+
+	reported := map[string]bool{}
+	for _, adj := range []func(int64) []int64{fatherAdj, childAdj} {
+		for _, cycle := range findDirectedCycles(graphResult.Transforms, adj) {
+			key := canonicalCycleKey(cycle)
+			if reported[key] {
+				continue
+			}
+			reported[key] = true
+			result.Errors = append(result.Errors, core.CheckFinding{
+				Code:        core.CheckTransformParentCycle,
+				TransformID: minInt64(cycle),
+				Reason:      "transform_parent_cycle",
+				Message:     formatCycleChain(cycle),
+			})
+		}
+	}
+}
+
+// findDirectedCycles returns the elementary cycles reachable in the directed
+// graph defined by adj, deterministically (transform IDs visited in sorted
+// order). Each returned slice lists the cycle's nodes in traversal order.
+func findDirectedCycles(transforms map[int64]*core.TransformNode, adj func(int64) []int64) [][]int64 {
+	const (
+		white = 0
+		gray  = 1
+		black = 2
+	)
+	color := make(map[int64]int, len(transforms))
+	var stack []int64
+	var cycles [][]int64
+
+	var dfs func(int64)
+	dfs = func(u int64) {
+		color[u] = gray
+		stack = append(stack, u)
+		for _, v := range adj(u) {
+			switch color[v] {
+			case gray:
+				// Back-edge: extract the cycle v..u from the stack.
+				for i := len(stack) - 1; i >= 0; i-- {
+					if stack[i] == v {
+						cycles = append(cycles, append([]int64(nil), stack[i:]...))
+						break
+					}
+				}
+			case white:
+				dfs(v)
+			}
+		}
+		stack = stack[:len(stack)-1]
+		color[u] = black
+	}
+
+	for _, id := range sortedTransformIDs(transforms) {
+		if color[id] == white {
+			dfs(id)
+		}
+	}
+	return cycles
+}
+
+// canonicalCycleKey returns an order-independent identity for a cycle's node set,
+// so the same loop found via the father and children graphs is reported once.
+func canonicalCycleKey(cycle []int64) string {
+	ids := append([]int64(nil), cycle...)
+	slices.Sort(ids)
+	var b strings.Builder
+	for i, id := range ids {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		b.WriteString(strconv.FormatInt(id, 10))
+	}
+	return b.String()
+}
+
+func formatCycleChain(cycle []int64) string {
+	var b strings.Builder
+	b.WriteString("cycle=")
+	for i, id := range cycle {
+		if i > 0 {
+			b.WriteString("->")
+		}
+		b.WriteString(strconv.FormatInt(id, 10))
+	}
+	if len(cycle) > 0 {
+		b.WriteString("->")
+		b.WriteString(strconv.FormatInt(cycle[0], 10))
+	}
+	return b.String()
+}
+
+func minInt64(values []int64) int64 {
+	if len(values) == 0 {
+		return 0
+	}
+	m := values[0]
+	for _, v := range values[1:] {
+		if v < m {
+			m = v
+		}
+	}
+	return m
 }
 
 func validateMissingTransformComponents(graphResult *core.Graph, result *core.CheckResult) {

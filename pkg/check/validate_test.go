@@ -640,6 +640,154 @@ func TestRunErrorsOnNonTransformClassChild(t *testing.T) {
 	}
 }
 
+// TestRunDetectsCycleFixtureEndToEnd runs the cycle check over a fixture in real
+// Unity F3 form, exercising the full parse->build->check path (not a hand-built
+// graph): a symmetric 2-cycle is one TRANSFORM_PARENT_CYCLE error and nothing else.
+func TestRunDetectsCycleFixtureEndToEnd(t *testing.T) {
+	graphResult := buildFixtureGraph(t, "transform_parent_cycle.prefab")
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusError {
+		t.Fatalf("expected ERROR, got %q", result.Status)
+	}
+	cyc := cycleErrors(result)
+	if len(cyc) != 1 || cyc[0].TransformID != 4000 {
+		t.Fatalf("expected one cycle (transform=4000), got %v", result.Errors)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("consistent cycle must not also raise mismatch errors, got %v", result.Errors)
+	}
+}
+
+func cycleErrors(result *core.CheckResult) []core.CheckFinding {
+	var out []core.CheckFinding
+	for _, e := range result.Errors {
+		if e.Code == core.CheckTransformParentCycle {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// TestRunDetectsFatherChainCycle: a 3-node consistent cycle (symmetric father and
+// children) is flagged exactly once as TRANSFORM_PARENT_CYCLE (father- and
+// children-graph detections deduped), with no spurious mismatch errors.
+func TestRunDetectsFatherChainCycle(t *testing.T) {
+	graphResult := &core.Graph{
+		Transforms: map[int64]*core.TransformNode{
+			1: {FileID: 1, Father: 2, Children: []int64{3}},
+			2: {FileID: 2, Father: 3, Children: []int64{1}},
+			3: {FileID: 3, Father: 1, Children: []int64{2}},
+		},
+	}
+
+	result := Run(graphResult)
+
+	cyc := cycleErrors(result)
+	if len(cyc) != 1 {
+		t.Fatalf("expected exactly 1 cycle error, got %d (all errors: %v)", len(cyc), result.Errors)
+	}
+	if cyc[0].TransformID != 1 || cyc[0].Reason != "transform_parent_cycle" {
+		t.Fatalf("unexpected cycle finding: %+v", cyc[0])
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("expected no non-cycle errors for a consistent cycle, got %v", result.Errors)
+	}
+}
+
+// TestRunDetectsMutualFatherCycle: a 2-node mutual link (A.Father=B & B.Father=A,
+// symmetric children) is a cycle, not a valid pair.
+func TestRunDetectsMutualFatherCycle(t *testing.T) {
+	graphResult := &core.Graph{
+		Transforms: map[int64]*core.TransformNode{
+			1: {FileID: 1, Father: 2, Children: []int64{2}},
+			2: {FileID: 2, Father: 1, Children: []int64{1}},
+		},
+	}
+
+	result := Run(graphResult)
+
+	if len(cycleErrors(result)) != 1 {
+		t.Fatalf("expected 1 cycle error for mutual father, got %v", result.Errors)
+	}
+}
+
+// TestRunDetectsChildrenOnlyCycle: a loop present only in the children links is
+// caught via the children-graph traversal (the father-graph alone would miss it).
+func TestRunDetectsChildrenOnlyCycle(t *testing.T) {
+	graphResult := &core.Graph{
+		Transforms: map[int64]*core.TransformNode{
+			1: {FileID: 1, Children: []int64{2}},
+			2: {FileID: 2, Children: []int64{1}},
+		},
+	}
+
+	result := Run(graphResult)
+
+	if len(cycleErrors(result)) < 1 {
+		t.Fatalf("expected a children-only cycle to be detected, got %v", result.Errors)
+	}
+}
+
+// TestRunNoCycleForValidTree is the primary false-positive guard: a normal
+// symmetric tree (root + two children) has no cycle.
+func TestRunNoCycleForValidTree(t *testing.T) {
+	graphResult := &core.Graph{
+		Transforms: map[int64]*core.TransformNode{
+			1: {FileID: 1, Father: 0, Children: []int64{2, 3}},
+			2: {FileID: 2, Father: 1, Children: []int64{}},
+			3: {FileID: 3, Father: 1, Children: []int64{}},
+		},
+	}
+
+	result := Run(graphResult)
+
+	if len(cycleErrors(result)) != 0 {
+		t.Fatalf("valid tree must not be a cycle, got %v", cycleErrors(result))
+	}
+}
+
+// TestRunNoCycleForDiamond: a diamond (a node reachable via two parents) is an
+// asymmetry, NOT a cycle — cycle detection must not flag it.
+func TestRunNoCycleForDiamond(t *testing.T) {
+	graphResult := &core.Graph{
+		Transforms: map[int64]*core.TransformNode{
+			1: {FileID: 1, Father: 0, Children: []int64{2, 3}},
+			2: {FileID: 2, Father: 1, Children: []int64{4}},
+			3: {FileID: 3, Father: 1, Children: []int64{4}},
+			4: {FileID: 4, Father: 2, Children: []int64{}},
+		},
+	}
+
+	result := Run(graphResult)
+
+	if len(cycleErrors(result)) != 0 {
+		t.Fatalf("diamond must not be flagged as a cycle, got %v", cycleErrors(result))
+	}
+}
+
+// TestRunDetectsCycleEvenWhenNodeHasGraphIssue is the non-short-circuit guard
+// (plan B.1/B.3): a cycle node carrying another graph issue must NOT hide the
+// cycle. The symmetry check skips issue nodes; cycle detection must not.
+func TestRunDetectsCycleEvenWhenNodeHasGraphIssue(t *testing.T) {
+	graphResult := &core.Graph{
+		Transforms: map[int64]*core.TransformNode{
+			1: {FileID: 1, Father: 2, Children: []int64{2}},
+			2: {FileID: 2, Father: 1, Children: []int64{1}},
+		},
+		Issues: []core.Issue{
+			{Code: core.IssueUnknownFieldShape, FileID: 1, Message: "x"},
+		},
+	}
+
+	result := Run(graphResult)
+
+	if len(cycleErrors(result)) != 1 {
+		t.Fatalf("cycle must surface even when a node has a graph issue, got %v", result.Errors)
+	}
+}
+
 func buildFixtureGraph(t *testing.T, name string) *core.Graph {
 	t.Helper()
 
