@@ -116,6 +116,22 @@ Parser is infrastructure. Safety planner is the product.
   further unmodeled transform classes — deferred pending a UI-heavy corpus, to be
   revisited before the reparent slice. Until then, 224 endpoints are skipped-and-counted.
 
+## v0.9.2 Scope (gap2 — transform parent cycle detection)
+
+- Adds `TRANSFORM_PARENT_CYCLE` (ERROR): detects transform parent loops that the
+  symmetric parent/child check cannot — a father chain (A→B→C→A), a children
+  chain, or a 2-node mutual link (A.Father=B and B.Father=A).
+- Runs directed-cycle detection independently on the father graph (t→t.Father)
+  and the children graph (t→each child). A valid hierarchy is a tree (acyclic in
+  both directions), so normal symmetric pairs and **diamonds** (a node reached two
+  ways, no back-edge) are NOT flagged; only real loops are. Verified false-positive
+  free across a large real-project corpus.
+- Cycle detection reads `Transforms[id].Father/.Children` directly and does **not**
+  short-circuit on `hasGraphIssueForFile`, so a loop surfaces even when a node
+  carries another graph issue. Stripped / unmodeled-class endpoints contribute no
+  edges, so they neither form nor mask a cycle. The same loop found via both
+  graphs is reported once; the finding carries the cycle chain (`cycle=a->b->a`).
+
 ## Library Surface (pkg/)
 
 `pkg/` is the supported Go library surface for external consumers such as `unity-ctx`:

@@ -259,6 +259,11 @@ func writeCheckErrorFields(stdout io.Writer, finding core.CheckFinding) {
 		if finding.Reason != "" {
 			_, _ = fmt.Fprintf(stdout, " reason=%s", finding.Reason)
 		}
+	case core.CheckTransformParentCycle:
+		_, _ = fmt.Fprintf(stdout, " transform=%d reason=%s", finding.TransformID, finding.Reason)
+		if finding.Message != "" {
+			_, _ = fmt.Fprintf(stdout, " %s", finding.Message)
+		}
 	case core.CheckMissingTransformComponent:
 		_, _ = fmt.Fprintf(stdout, " go=%d reason=%s", finding.GameObjectID, finding.Reason)
 	case core.CheckSuspiciousMonoBehaviourScript:
