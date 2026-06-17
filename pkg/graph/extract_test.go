@@ -64,6 +64,30 @@ func TestExtractTransformChildrenUsesChildListParser(t *testing.T) {
 	}
 }
 
+// TestExtractTransformParsesSameIndentChildren is the gap1 fix: Unity's real F3
+// serialization (dash at the SAME indent as m_Children) must parse with NO
+// UNKNOWN_FIELD_SHAPE issue, so the parent transform is no longer skipped by the
+// symmetry validator.
+func TestExtractTransformParsesSameIndentChildren(t *testing.T) {
+	body := "" +
+		"Transform:\n" +
+		"  m_GameObject: {fileID: 1000}\n" +
+		"  m_Children:\n" +
+		"  - {fileID: 4001}\n" +
+		"  - {fileID: 4002}\n" +
+		"  m_Father: {fileID: 0}\n" +
+		"  m_RootOrder: 0\n"
+
+	_, transform, issues := extractTransform(4000, body)
+
+	if len(issues) != 0 {
+		t.Fatalf("expected no issues for F3 children, got %v", issues)
+	}
+	if len(transform.Children) != 2 || transform.Children[0] != 4001 || transform.Children[1] != 4002 {
+		t.Fatalf("unexpected children (must stop at m_Father): %v", transform.Children)
+	}
+}
+
 func TestExtractMonoBehaviourUnknownScriptShapeReturnsIssue(t *testing.T) {
 	body := string(loadGraphFixture(t, "unknown_script_shape.prefab"))
 

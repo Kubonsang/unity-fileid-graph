@@ -37,7 +37,13 @@ func runRemoveComponentWithDeps(opts core.RemoveComponentOptions, ops fileOps, p
 	}
 	pre := check.Run(graphResult)
 
-	result := &core.RemoveComponentResult{FileID: opts.FileID, PreCheck: pre.Status}
+	result := &core.RemoveComponentResult{
+		FileID:                        opts.FileID,
+		PreCheck:                      pre.Status,
+		PreCheckSkippedLinks:          pre.SkippedLinks,
+		PreCheckSkippedStripped:       pre.SkippedStripped,
+		PreCheckSkippedUnmodeledClass: pre.SkippedUnmodeledClass,
+	}
 	if !opts.Experimental {
 		result.Code = core.MutationCodeExperimentalFlagRequired
 		result.MarkBlocked("remove-component requires --experimental")

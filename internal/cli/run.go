@@ -202,13 +202,21 @@ func writeGraph(stdout io.Writer, graphResult *core.Graph) int {
 }
 
 func writeCheck(stdout io.Writer, result *core.CheckResult) int {
-	_, _ = fmt.Fprintf(stdout, "GRAPH_CHECK status=%s blocks=%d gameobjects=%d components=%d transforms=%d\n",
+	_, _ = fmt.Fprintf(stdout, "GRAPH_CHECK status=%s blocks=%d gameobjects=%d components=%d transforms=%d skipped=%d",
 		result.Status,
 		result.BlockCount,
 		result.GameObjectCount,
 		result.ComponentCount,
 		result.TransformCount,
+		result.SkippedLinks,
 	)
+	// Make skipped symmetry links explicit so a passing check is never read as
+	// "checked everything" when some links were unassertable (stripped / unmodeled).
+	if result.SkippedLinks > 0 {
+		_, _ = fmt.Fprintf(stdout, " skip_reasons=stripped:%d,unmodeled_class:%d",
+			result.SkippedStripped, result.SkippedUnmodeledClass)
+	}
+	_, _ = fmt.Fprintln(stdout)
 
 	for _, finding := range result.Errors {
 		_, _ = fmt.Fprintf(stdout, "ERROR code=%s", finding.Code)
@@ -433,6 +441,7 @@ func writeSet(stdout io.Writer, result *core.SetResult) int {
 		result.FinalCheck,
 		result.BackupPath,
 	)
+	writePreCheckSkip(stdout, result.PreCheckSkippedLinks, result.PreCheckSkippedStripped, result.PreCheckSkippedUnmodeledClass)
 	if result.Status == core.MutationStatusError && result.Message != "" {
 		_, _ = fmt.Fprintf(stdout, " message=%q", result.Message)
 	}
@@ -442,6 +451,16 @@ func writeSet(stdout io.Writer, result *core.SetResult) int {
 		return 1
 	}
 	return 0
+}
+
+// writePreCheckSkip surfaces the pre_check's skipped transform-symmetry links on
+// a write result so a committed write is never read as "fully symmetry-checked"
+// when stripped / unmodeled-class endpoints were skipped.
+func writePreCheckSkip(stdout io.Writer, links, stripped, unmodeled int) {
+	_, _ = fmt.Fprintf(stdout, " pre_check_skipped=%d", links)
+	if links > 0 {
+		_, _ = fmt.Fprintf(stdout, " pre_check_skip_reasons=stripped:%d,unmodeled_class:%d", stripped, unmodeled)
+	}
 }
 
 func runRemoveComponent(args []string, stdout, stderr io.Writer) int {

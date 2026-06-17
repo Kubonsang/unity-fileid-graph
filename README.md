@@ -85,6 +85,37 @@ Parser is infrastructure. Safety planner is the product.
 - Does not add a generic YAML parser, generic serializer, multiline PPtr parser, or structural mutation.
 - Intended consumer: `unity-ctx` can call `uyaml ... check --json` and `uyaml ... refs --json` before integrating graph safety into write paths.
 
+## v0.9.1 Scope (gap1 — filled m_Children + symmetry skip visibility)
+
+- Parses Unity's real `m_Children` serialization where the child dash sits at the
+  **same indent** as the `m_Children:` key (F3), not only the deeper-indented form.
+  Accepts empty `[]`, deeper-dash, same-indent dash, and key-only (empty) blocks;
+  a non-empty inline `[{...}]` array stays a warning-only `UNKNOWN_FIELD_SHAPE`.
+- Because filled `m_Children` now parses, the existing (ERROR-severity)
+  `TRANSFORM_PARENT_CHILD_MISMATCH` symmetry check is no longer silently bypassed
+  by an `UNKNOWN_FIELD_SHAPE` skip; genuine parent/child asymmetry now surfaces.
+- **Conservative symmetry skip:** a parent/child link is asserted only when both
+  endpoints have locally authoritative data. A link is **skipped** (never silently
+  — counted and reported) when the other endpoint is a **stripped** nested
+  prefab-instance block, or a **present-but-unmodeled class** (e.g. `RectTransform`
+  224). A reference to a fileID with **no block at all** is still a genuine
+  dangling `TRANSFORM_PARENT_CHILD_MISMATCH` ERROR. The premise "asymmetry =
+  broken graph" holds only within the kernel's modeled scope: skipping stripped /
+  unmodeled endpoints is honest modeling, not false-positive hiding.
+- `check` reports `skipped=N` on the summary line (and `skip_reasons=stripped:M,unmodeled_class:K`
+  when `N>0`); `check --json` adds `skipped_links`, `skipped_stripped`,
+  `skipped_unmodeled_class` to `summary`. A passing check therefore never silently
+  means "skipped everything" — it means clean within the checkable scope.
+- The write path carries the same visibility: `set` reports `pre_check_skipped=N`
+  (and `pre_check_skip_reasons=...` when `N>0`), and `core.SetResult` /
+  `core.RemoveComponentResult` expose the pre_check skip counts, so a committed
+  write is never read as fully symmetry-checked when stripped/unmodeled endpoints
+  were skipped.
+- **Deferred (future slice):** model `RectTransform` (class 224) in transform
+  symmetry so UI hierarchies are validated rather than skipped, and re-survey any
+  further unmodeled transform classes — deferred pending a UI-heavy corpus, to be
+  revisited before the reparent slice. Until then, 224 endpoints are skipped-and-counted.
+
 ## Library Surface (pkg/)
 
 `pkg/` is the supported Go library surface for external consumers such as `unity-ctx`:

@@ -48,6 +48,13 @@ type SetResult struct {
 	FinalCheck string
 	BackupPath string
 	Message    string
+
+	// Transform symmetry links the pre_check skipped (stripped / unmodeled
+	// endpoints) so a write is never read as "fully symmetry-checked" when it
+	// was not. See CheckResult for the breakdown semantics.
+	PreCheckSkippedLinks          int
+	PreCheckSkippedStripped       int
+	PreCheckSkippedUnmodeledClass int
 }
 
 type RemoveComponentOptions struct {
@@ -69,6 +76,10 @@ type RemoveComponentResult struct {
 	FinalCheck string
 	BackupPath string
 	Message    string
+
+	PreCheckSkippedLinks          int
+	PreCheckSkippedStripped       int
+	PreCheckSkippedUnmodeledClass int
 }
 
 func (r *SetResult) MarkBlocked(message string) {

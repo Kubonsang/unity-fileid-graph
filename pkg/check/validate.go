@@ -137,9 +137,25 @@ func validateGameObjectComponentBackrefs(graphResult *core.Graph, result *core.C
 	}
 }
 
+// validateTransformParentChildRelationships asserts parent/child symmetry, but
+// only between endpoints whose links are locally authoritative. A parent/child
+// reference is SKIPPED (counted, never silently dropped) when the other endpoint
+// is a stripped nested prefab-instance block or an unmodeled-class block (e.g.
+// RectTransform 224) — for those the local file does not carry the data needed
+// to assert a mismatch. A reference to a fileID with NO block at all is a genuine
+// dangling link and is still reported as an ERROR.
 func validateTransformParentChildRelationships(graphResult *core.Graph, result *core.CheckResult) {
+	skipStripped := func() { result.SkippedLinks++; result.SkippedStripped++ }
+	skipUnmodeled := func() { result.SkippedLinks++; result.SkippedUnmodeledClass++ }
+
 	for _, transformID := range sortedTransformIDs(graphResult.Transforms) {
 		if hasGraphIssueForFile(graphResult, transformID) {
+			continue
+		}
+		// Stripped transforms are nested prefab-instance children: their
+		// m_Father/m_Children are not stored locally (they live in the source
+		// prefab + m_Modifications), so symmetry is not assertable for them.
+		if isStrippedFileID(graphResult, transformID) {
 			continue
 		}
 		transform := graphResult.Transforms[transformID]
@@ -149,14 +165,29 @@ func validateTransformParentChildRelationships(graphResult *core.Graph, result *
 
 		if transform.Father != 0 {
 			parentTransform, ok := graphResult.Transforms[transform.Father]
-			if !ok || parentTransform == nil {
-				result.Errors = append(result.Errors, core.CheckFinding{
-					Code:        core.CheckTransformParentChildMismatch,
-					TransformID: transformID,
-					ParentID:    transform.Father,
-					Reason:      "missing_parent_transform",
-				})
-			} else if !hasGraphIssueForFile(graphResult, transform.Father) && !containsInt64(parentTransform.Children, transformID) {
+			switch {
+			case !ok || parentTransform == nil:
+				// Father is not a modeled transform.
+				switch {
+				case isStrippedFileID(graphResult, transform.Father):
+					skipStripped()
+				case isUnmodeledTransformClass(graphResult, transform.Father):
+					skipUnmodeled() // transform-like class not yet modeled (RectTransform 224)
+				default:
+					// No block, or a block whose class is not a transform at all:
+					// a genuine dangling/wrong-type parent reference.
+					result.Errors = append(result.Errors, core.CheckFinding{
+						Code:        core.CheckTransformParentChildMismatch,
+						TransformID: transformID,
+						ParentID:    transform.Father,
+						Reason:      "missing_parent_transform",
+					})
+				}
+			case hasGraphIssueForFile(graphResult, transform.Father):
+				// Pre-existing graph-issue skip (handled elsewhere).
+			case isStrippedFileID(graphResult, transform.Father):
+				skipStripped()
+			case !containsInt64(parentTransform.Children, transformID):
 				result.Errors = append(result.Errors, core.CheckFinding{
 					Code:        core.CheckTransformParentChildMismatch,
 					TransformID: transformID,
@@ -170,14 +201,26 @@ func validateTransformParentChildRelationships(graphResult *core.Graph, result *
 			if hasGraphIssueForFile(graphResult, childID) {
 				continue
 			}
+			// A stripped child carries no local m_Father to compare against.
+			if isStrippedFileID(graphResult, childID) {
+				skipStripped()
+				continue
+			}
 			childTransform, ok := graphResult.Transforms[childID]
 			if !ok || childTransform == nil {
-				result.Errors = append(result.Errors, core.CheckFinding{
-					Code:        core.CheckTransformParentChildMismatch,
-					TransformID: transformID,
-					ChildID:     childID,
-					Reason:      "missing_child_transform",
-				})
+				// A transform-like-but-unmodeled child (RectTransform) is skipped;
+				// a child fileID with no block, or a block that is not a transform
+				// class at all, is a genuine dangling/wrong-type reference.
+				if isUnmodeledTransformClass(graphResult, childID) {
+					skipUnmodeled()
+				} else {
+					result.Errors = append(result.Errors, core.CheckFinding{
+						Code:        core.CheckTransformParentChildMismatch,
+						TransformID: transformID,
+						ChildID:     childID,
+						Reason:      "missing_child_transform",
+					})
+				}
 				continue
 			}
 			if childTransform.Father != transformID {
@@ -245,6 +288,32 @@ func isSuspiciousScript(script *core.ScriptRef) bool {
 		return true
 	}
 	return script.Type <= 0
+}
+
+// isStrippedFileID reports whether any block at fileID is a stripped (nested
+// prefab-instance) block. Such blocks do not store local parent/child links.
+func isStrippedFileID(graphResult *core.Graph, fileID int64) bool {
+	for _, block := range graphResult.BlocksByID[fileID] {
+		if block != nil && block.IsStripped {
+			return true
+		}
+	}
+	return false
+}
+
+// isUnmodeledTransformClass reports whether a block at fileID is a transform-like
+// class that the graph does not yet model as a TransformNode. Today that is only
+// RectTransform (224); Transform (4) is modeled. Such an endpoint cannot be
+// symmetry-checked yet, so its link is skipped (and counted) rather than flagged.
+// A non-transform-class block (GameObject, Material, …) is NOT covered here, so a
+// parent/child reference to one stays a genuine mismatch error.
+func isUnmodeledTransformClass(graphResult *core.Graph, fileID int64) bool {
+	for _, block := range graphResult.BlocksByID[fileID] {
+		if block != nil && block.ClassID == 224 {
+			return true
+		}
+	}
+	return false
 }
 
 func hasGraphIssueForFile(graphResult *core.Graph, fileID int64) bool {
