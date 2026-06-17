@@ -202,13 +202,21 @@ func writeGraph(stdout io.Writer, graphResult *core.Graph) int {
 }
 
 func writeCheck(stdout io.Writer, result *core.CheckResult) int {
-	_, _ = fmt.Fprintf(stdout, "GRAPH_CHECK status=%s blocks=%d gameobjects=%d components=%d transforms=%d\n",
+	_, _ = fmt.Fprintf(stdout, "GRAPH_CHECK status=%s blocks=%d gameobjects=%d components=%d transforms=%d skipped=%d",
 		result.Status,
 		result.BlockCount,
 		result.GameObjectCount,
 		result.ComponentCount,
 		result.TransformCount,
+		result.SkippedLinks,
 	)
+	// Make skipped symmetry links explicit so a passing check is never read as
+	// "checked everything" when some links were unassertable (stripped / unmodeled).
+	if result.SkippedLinks > 0 {
+		_, _ = fmt.Fprintf(stdout, " skip_reasons=stripped:%d,unmodeled_class:%d",
+			result.SkippedStripped, result.SkippedUnmodeledClass)
+	}
+	_, _ = fmt.Fprintln(stdout)
 
 	for _, finding := range result.Errors {
 		_, _ = fmt.Fprintf(stdout, "ERROR code=%s", finding.Code)

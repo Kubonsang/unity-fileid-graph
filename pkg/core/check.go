@@ -37,6 +37,17 @@ type CheckResult struct {
 	TransformCount  int
 	Errors          []CheckFinding
 	Warnings        []CheckFinding
+
+	// Transform parent/child links the symmetry check could not assert and
+	// deliberately skipped, so a passing check is never a silent "skipped
+	// everything". SkippedLinks is the total; the breakdown explains why:
+	//   stripped        — endpoint is a stripped nested prefab-instance block
+	//                      (no locally authoritative m_Father/m_Children)
+	//   unmodeled class — endpoint block exists but its class is not modeled as
+	//                      a transform (e.g. RectTransform 224)
+	SkippedLinks          int
+	SkippedStripped       int
+	SkippedUnmodeledClass int
 }
 
 func (result *CheckResult) RecomputeStatus() {

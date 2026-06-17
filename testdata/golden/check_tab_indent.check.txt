@@ -1,2 +1,2 @@
-GRAPH_CHECK status=WARN blocks=1 gameobjects=1 components=0 transforms=0
+GRAPH_CHECK status=WARN blocks=1 gameobjects=1 components=0 transforms=0 skipped=0
 WARN code=TAB_INDENT file_id=1000 message="tab indentation is unsupported in v0.2 field scanning"

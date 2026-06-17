@@ -9,7 +9,10 @@
     "components": 1,
     "transforms": 1,
     "warnings": 0,
-    "errors": 0
+    "errors": 0,
+    "skipped_links": 0,
+    "skipped_stripped": 0,
+    "skipped_unmodeled_class": 0
   },
   "issues": []
 }

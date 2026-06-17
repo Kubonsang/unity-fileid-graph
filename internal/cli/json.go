@@ -8,12 +8,15 @@ import (
 )
 
 type jsonSummary struct {
-	Blocks      int `json:"blocks"`
-	GameObjects int `json:"gameobjects"`
-	Components  int `json:"components"`
-	Transforms  int `json:"transforms"`
-	Warnings    int `json:"warnings"`
-	Errors      int `json:"errors"`
+	Blocks                int `json:"blocks"`
+	GameObjects           int `json:"gameobjects"`
+	Components            int `json:"components"`
+	Transforms            int `json:"transforms"`
+	Warnings              int `json:"warnings"`
+	Errors                int `json:"errors"`
+	SkippedLinks          int `json:"skipped_links"`
+	SkippedStripped       int `json:"skipped_stripped"`
+	SkippedUnmodeledClass int `json:"skipped_unmodeled_class"`
 }
 
 type jsonIssue struct {
@@ -70,12 +73,15 @@ func writeCheckJSON(stdout io.Writer, namespace string, file string, result *cor
 		Command:   "check",
 		File:      file,
 		Summary: jsonSummary{
-			Blocks:      result.BlockCount,
-			GameObjects: result.GameObjectCount,
-			Components:  result.ComponentCount,
-			Transforms:  result.TransformCount,
-			Warnings:    len(result.Warnings),
-			Errors:      len(result.Errors),
+			Blocks:                result.BlockCount,
+			GameObjects:           result.GameObjectCount,
+			Components:            result.ComponentCount,
+			Transforms:            result.TransformCount,
+			Warnings:              len(result.Warnings),
+			Errors:                len(result.Errors),
+			SkippedLinks:          result.SkippedLinks,
+			SkippedStripped:       result.SkippedStripped,
+			SkippedUnmodeledClass: result.SkippedUnmodeledClass,
 		},
 		Issues: []jsonIssue{},
 	}

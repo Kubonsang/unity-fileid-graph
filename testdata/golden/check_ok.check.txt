@@ -1,1 +1,1 @@
-GRAPH_CHECK status=OK blocks=2 gameobjects=1 components=1 transforms=1
+GRAPH_CHECK status=OK blocks=2 gameobjects=1 components=1 transforms=1 skipped=0

@@ -498,6 +498,148 @@ func TestRunDetectsMissingReverseParentChildLink(t *testing.T) {
 	}
 }
 
+// TestRunAcceptsSymmetricF3Children proves the gap1 fix end-to-end on a fixture
+// built from real Unity 6000.3.8f1 bytes (F3 m_Children — dash at the same indent
+// as the key): a symmetric parent->children hierarchy passes with no errors and,
+// critically, no UNKNOWN_FIELD_SHAPE warning (the children now parse).
+func TestRunAcceptsSymmetricF3Children(t *testing.T) {
+	graphResult := buildFixtureGraph(t, "transform_children_f3.prefab")
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusOK {
+		t.Fatalf("expected status OK, got %q (errors=%v warnings=%v)", result.Status, result.Errors, result.Warnings)
+	}
+	if len(result.Errors) != 0 {
+		t.Fatalf("expected no errors, got %v", result.Errors)
+	}
+	if len(result.Warnings) != 0 {
+		t.Fatalf("expected no warnings (F3 children must parse, no UNKNOWN_FIELD_SHAPE), got %v", result.Warnings)
+	}
+}
+
+// TestRunDetectsAsymmetricF3ChildrenAsError is the Stage-3 guard: with gap1 fixed,
+// a previously-hidden asymmetry in F3 children surfaces as a TRANSFORM_PARENT_CHILD_MISMATCH
+// ERROR. No UNKNOWN_FIELD_SHAPE warning remains, proving the issue-skip no longer
+// masks the mismatch. Fixture uses real Unity F3 bytes; child 4002.m_Father=0 while
+// parent 4000 lists it.
+func TestRunDetectsAsymmetricF3ChildrenAsError(t *testing.T) {
+	graphResult := buildFixtureGraph(t, "transform_children_f3_asymmetric.prefab")
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusError {
+		t.Fatalf("expected status ERROR, got %q", result.Status)
+	}
+	if len(result.Warnings) != 0 {
+		t.Fatalf("expected no warnings (asymmetry must not be hidden as UNKNOWN_FIELD_SHAPE), got %v", result.Warnings)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("expected exactly 1 error, got %d: %v", len(result.Errors), result.Errors)
+	}
+	e := result.Errors[0]
+	if e.Code != core.CheckTransformParentChildMismatch || e.TransformID != 4000 || e.ChildID != 4002 || e.Reason != "child_father_mismatch" {
+		t.Fatalf("unexpected error: %+v", e)
+	}
+}
+
+// TestRunSkipsStrippedChildLinkWithVisibility proves the conservative skip on a
+// fixture built from real Unity bytes: a stripped (nested prefab-instance) child
+// is skipped (not a false mismatch), the skip is counted and visible, and the
+// real sibling child is still validated. Passing != silently skipping everything.
+func TestRunSkipsStrippedChildLinkWithVisibility(t *testing.T) {
+	graphResult := buildFixtureGraph(t, "transform_children_f3_stripped_child.prefab")
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusOK {
+		t.Fatalf("expected status OK, got %q (errors=%v warnings=%v)", result.Status, result.Errors, result.Warnings)
+	}
+	if len(result.Errors) != 0 {
+		t.Fatalf("expected no errors (stripped child must not be a mismatch), got %v", result.Errors)
+	}
+	if result.SkippedLinks != 1 || result.SkippedStripped != 1 || result.SkippedUnmodeledClass != 0 {
+		t.Fatalf("skip visibility wrong: links=%d stripped=%d unmodeled=%d", result.SkippedLinks, result.SkippedStripped, result.SkippedUnmodeledClass)
+	}
+}
+
+// TestRunSkipsUnmodeledClassEndpoint covers the RectTransform(224)-style case: a
+// child whose block is present but whose class is not modeled as a transform is
+// skipped (counted as unmodeled_class), not flagged as a missing/mismatched link.
+func TestRunSkipsUnmodeledClassEndpoint(t *testing.T) {
+	graphResult := &core.Graph{
+		Transforms: map[int64]*core.TransformNode{
+			4000: {FileID: 4000, Children: []int64{224000}},
+		},
+		BlocksByID: map[int64][]*core.Block{
+			4000:   {{FileID: 4000, ClassID: 4}},
+			224000: {{FileID: 224000, ClassID: 224}}, // RectTransform: present, not modeled
+		},
+	}
+
+	result := Run(graphResult)
+
+	if len(result.Errors) != 0 {
+		t.Fatalf("expected no errors for present-but-unmodeled endpoint, got %v", result.Errors)
+	}
+	if result.SkippedLinks != 1 || result.SkippedUnmodeledClass != 1 || result.SkippedStripped != 0 {
+		t.Fatalf("skip visibility wrong: links=%d stripped=%d unmodeled=%d", result.SkippedLinks, result.SkippedStripped, result.SkippedUnmodeledClass)
+	}
+}
+
+// TestRunStillErrorsOnGenuinelyDanglingChild is the net-negative reproof: the
+// conservative skip must distinguish a STRIPPED/unmodeled endpoint (skip) from a
+// genuinely ABSENT one (no block at all) — a dangling child fileID must still be
+// a TRANSFORM_PARENT_CHILD_MISMATCH ERROR, never silently skipped.
+func TestRunStillErrorsOnGenuinelyDanglingChild(t *testing.T) {
+	graphResult := &core.Graph{
+		Transforms: map[int64]*core.TransformNode{
+			4000: {FileID: 4000, Children: []int64{9999}}, // 9999 has no block at all
+		},
+		BlocksByID: map[int64][]*core.Block{
+			4000: {{FileID: 4000, ClassID: 4}},
+		},
+	}
+
+	result := Run(graphResult)
+
+	if result.Status != core.CheckStatusError {
+		t.Fatalf("expected ERROR for dangling child, got %q", result.Status)
+	}
+	if result.SkippedLinks != 0 {
+		t.Fatalf("dangling child must not be skipped, got skipped=%d", result.SkippedLinks)
+	}
+	if len(result.Errors) != 1 || result.Errors[0].Code != core.CheckTransformParentChildMismatch ||
+		result.Errors[0].ChildID != 9999 || result.Errors[0].Reason != "missing_child_transform" {
+		t.Fatalf("expected dangling missing_child_transform error, got %v", result.Errors)
+	}
+}
+
+// TestRunErrorsOnNonTransformClassChild guards the narrow skip: a present block
+// whose class is NOT transform-like (e.g. a GameObject listed in m_Children) is a
+// genuine wrong-type reference and must still ERROR, not be skipped as "unmodeled".
+func TestRunErrorsOnNonTransformClassChild(t *testing.T) {
+	graphResult := &core.Graph{
+		Transforms: map[int64]*core.TransformNode{
+			4000: {FileID: 4000, Children: []int64{1000}},
+		},
+		BlocksByID: map[int64][]*core.Block{
+			4000: {{FileID: 4000, ClassID: 4}},
+			1000: {{FileID: 1000, ClassID: 1}}, // GameObject: present but not transform-like
+		},
+	}
+
+	result := Run(graphResult)
+
+	if result.SkippedLinks != 0 {
+		t.Fatalf("non-transform-class child must not be skipped, got skipped=%d", result.SkippedLinks)
+	}
+	if len(result.Errors) != 1 || result.Errors[0].Code != core.CheckTransformParentChildMismatch ||
+		result.Errors[0].ChildID != 1000 || result.Errors[0].Reason != "missing_child_transform" {
+		t.Fatalf("expected wrong-type child to error, got %v", result.Errors)
+	}
+}
+
 func buildFixtureGraph(t *testing.T, name string) *core.Graph {
 	t.Helper()
 

@@ -141,6 +141,22 @@ func parseNestedFileID(lines []bodyLine, index int) (int64, bool) {
 	return 0, false
 }
 
+// parseChildFileIDList parses the m_Children block at lines[index]. It accepts
+// the forms Unity actually serializes:
+//
+//	F2  m_Children:        (dash indented DEEPER than the key)
+//	      - {fileID: N}
+//	F3  m_Children:        (dash at the SAME indent as the key — Unity's real form)
+//	    - {fileID: N}
+//	F6  m_Children:        (key only, no entries) -> empty children
+//
+// Termination uses two rules in combination:
+//   - directIndent rule: lock onto the first child dash's indent; dashes at a
+//     different indent (a nested sequence inside a multiline child item) are NOT
+//     collected as siblings — they belong to that item's parseNestedFileID.
+//   - dash-aware stop: end only at the next sibling/parent KEY (a non-dash line
+//     at indent <= the m_Children key), or at end of input. A same-indent dash
+//     (F3) therefore continues the list instead of terminating it.
 func parseChildFileIDList(lines []bodyLine, index int) ([]int64, bool) {
 	if index < 0 || index >= len(lines) {
 		return nil, false
@@ -150,20 +166,31 @@ func parseChildFileIDList(lines []bodyLine, index int) ([]int64, bool) {
 	children := make([]int64, 0)
 	found := false
 	directIndent := -1
+	sawUnknownNonDash := false
 
 	for i := index + 1; i < len(lines); i++ {
-		if lines[i].Indent <= parentIndent {
-			break
-		}
+		line := lines[i]
 
-		if directIndent == -1 {
-			directIndent = lines[i].Indent
-		}
-		if lines[i].Indent != directIndent {
+		if line.EffectiveKey != "-" {
+			// A non-dash line at or above the key indent is the next sibling/
+			// parent field: the m_Children block ends here.
+			if line.Indent <= parentIndent {
+				break
+			}
+			// A deeper non-dash line that is not part of a collected child item
+			// is an unrecognized shape; remember it in case no children parse.
+			sawUnknownNonDash = true
 			continue
 		}
 
-		fileID, ok := parseInlineFileID(lines[i].EffectiveText)
+		if directIndent == -1 {
+			directIndent = line.Indent
+		}
+		if line.Indent != directIndent {
+			continue
+		}
+
+		fileID, ok := parseInlineFileID(line.EffectiveText)
 		if !ok {
 			fileID, ok = parseNestedFileID(lines, i)
 		}
@@ -176,7 +203,12 @@ func parseChildFileIDList(lines []bodyLine, index int) ([]int64, bool) {
 	}
 
 	if !found {
-		return nil, false
+		// No child entries. An empty block (F6: key only, then a sibling key or
+		// EOF) is a valid empty children list; anything else is unrecognized.
+		if sawUnknownNonDash {
+			return nil, false
+		}
+		return []int64{}, true
 	}
 
 	return children, true
